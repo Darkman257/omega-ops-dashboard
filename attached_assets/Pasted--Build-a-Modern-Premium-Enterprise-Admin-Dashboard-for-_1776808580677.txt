@@ -1,0 +1,39 @@
+"Build a Modern, Premium Enterprise Admin Dashboard for Omega Contracting (https://omega-tech.com/).
+
+I. Visual Identity & UI (The Look):
+
+Strictly Adhere to the branding of https://omega-tech.com/ (Deep Navy blue, Gold accents, White/Slate Gray base).
+
+Here is where you need to be creative and use ALL the most modern libraries and techniques. Do not give me a basic bootstrap look. I want a Premium Glassmorphism feel: blurry backdrops, subtle gradients, clean cards, glowing accents, and smooth transitions (inspired by ClickUp and high-end SaaS).
+
+Layout: A clean, collapsible sidebar with icons, a top bar with search and a Command Bar (Cmd+K style), and a main dashboard canvas.
+
+II. Shared State (The Brain):
+
+Setup a centralized state (like React Context) to manage data. Seed the state with ZERO data (Empty States) so it is ready for fresh entry.
+
+Implement PERSISTENCE using LocalStorage so all data added by the user remains across sessions.
+
+III. Core Modules (The Body):
+
+1. Executive Overview: 4 main KPI cards (Active Sites, Staff Count, Docs Expiring, Budget Spend %). Use professional charts like a Pie chart for Project Status and a Bar chart for Weekly Activity (similar to ClickUp screenshots).
+
+2. Projects: A list/grid view of construction projects with an 'Add Project' button that updates local state. Handle empty states gracefully.
+
+3. Staff Directory: A clean, professional table for managing employees. Include a central 'Add Employee' modal.
+
+4. Document Control: A dedicated section to track contracts, permits, and licenses with automated expiry date status badges (Valid / Expiring Soon / Expired).
+
+IV. Key Intelligent Feature (The Killer Move):
+
+Create a centralized 'Smart AI Importer'. This button should accept any CSV/Excel file. Use semantic logic (or LLM if possible) to map headers automatically (e.g., 'الاسم' or 'Staff Name' maps to 'Name') and present a preview table to the user before confirming the import.
+
+V. Technical Constraints:
+
+Use the TanStack Start stack (for fast, file-based routing and optimization).
+
+Use shadcn/ui components + Tailwind CSS.
+
+For charts, use a modern library like Recharts.
+
+The entire solution must be clean, responsive, and look like a product built for a massive corporation."
