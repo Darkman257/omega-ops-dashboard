@@ -11,6 +11,10 @@ export interface Project {
   spent: number;
   location: string;
   description: string;
+  projectValue: number;
+  consultant: string;
+  subcontractors: string;
+  completionPercent: number;
   createdAt: string;
 }
 
@@ -22,6 +26,10 @@ export interface Employee {
   phone: string;
   email: string;
   status: 'Active' | 'Inactive';
+  passportExpiry: string;
+  insuranceStatus: 'Valid' | 'Expired' | 'Not Set';
+  basicSalary: number;
+  siteAllowance: number;
   createdAt: string;
 }
 
@@ -33,6 +41,8 @@ export interface DocumentType {
   issuedDate: string;
   projectId?: string;
   notes: string;
+  departmentOwner: string;
+  lastRenewed: string;
   createdAt: string;
 }
 
@@ -46,11 +56,11 @@ interface AppContextType extends AppState {
   addProject: (project: Omit<Project, 'id' | 'createdAt'>) => void;
   updateProject: (id: string, project: Partial<Project>) => void;
   deleteProject: (id: string) => void;
-  
+
   addEmployee: (employee: Omit<Employee, 'id' | 'createdAt'>) => void;
   updateEmployee: (id: string, employee: Partial<Employee>) => void;
   deleteEmployee: (id: string) => void;
-  
+
   addDocument: (doc: Omit<DocumentType, 'id' | 'createdAt'>) => void;
   updateDocument: (id: string, doc: Partial<DocumentType>) => void;
   deleteDocument: (id: string) => void;
@@ -58,8 +68,81 @@ interface AppContextType extends AppState {
   importData: (type: 'staff' | 'documents', data: any[]) => void;
 }
 
+const SEED_PROJECTS: Project[] = [
+  {
+    id: 'seed-fs-nile',
+    name: 'Four Seasons Nile Plaza',
+    client: 'Four Seasons Hotels & Resorts',
+    status: 'Completed',
+    startDate: '2018-03-01',
+    endDate: '2019-06-30',
+    budget: 4500000,
+    spent: 4320000,
+    location: 'Garden City, Cairo',
+    description: 'Full kitchen renovation and MEP (Mechanical, Electrical & Plumbing) systems upgrade across multiple floors of the Nile Plaza hotel.',
+    projectValue: 4500000,
+    consultant: 'AECOM Middle East',
+    subcontractors: 'ElectroPower Egypt, CoolTech MEP',
+    completionPercent: 100,
+    createdAt: '2018-03-01T00:00:00.000Z'
+  },
+  {
+    id: 'seed-mivida',
+    name: 'Mivida – Emaar',
+    client: 'Emaar Properties',
+    status: 'Completed',
+    startDate: '2019-01-15',
+    endDate: '2021-08-31',
+    budget: 8200000,
+    spent: 7950000,
+    location: '5th Settlement, New Cairo',
+    description: 'Infrastructure development and landscape construction across the Mivida residential compound including roads, utilities, and green areas.',
+    projectValue: 8200000,
+    consultant: 'WSP Global',
+    subcontractors: 'GreenLand Landscaping, StructurePro Egypt',
+    completionPercent: 100,
+    createdAt: '2019-01-15T00:00:00.000Z'
+  },
+  {
+    id: 'seed-katameya',
+    name: 'Katameya Heights',
+    client: 'Palm Hills Developments',
+    status: 'Completed',
+    startDate: '2020-05-01',
+    endDate: '2022-04-30',
+    budget: 3100000,
+    spent: 3050000,
+    location: 'New Cairo',
+    description: 'Luxury villa renovations including premium interior fit-out, complete MEP upgrades, and bespoke landscaping across 12 villas.',
+    projectValue: 3100000,
+    consultant: 'DCI Engineers',
+    subcontractors: 'LuxFinish Interiors, ModernMEP',
+    completionPercent: 100,
+    createdAt: '2020-05-01T00:00:00.000Z'
+  },
+  {
+    id: 'seed-marassi',
+    name: 'Marassi – North Coast',
+    client: 'Emaar Misr',
+    status: 'Completed',
+    startDate: '2021-02-01',
+    endDate: '2023-10-31',
+    budget: 12500000,
+    spent: 12100000,
+    location: 'Sidi Abdel Rahman, North Coast',
+    description: 'Construction works for residential villas and hospitality units at the Marassi beachfront development on Egypt\'s North Coast.',
+    projectValue: 12500000,
+    consultant: 'Dar Al Handasah (Shair and Partners)',
+    subcontractors: 'NorthBuild Co., CoastalMEP, SunSteel Structures',
+    completionPercent: 100,
+    createdAt: '2021-02-01T00:00:00.000Z'
+  }
+];
+
+const STORAGE_KEY = 'omega-tc-v2';
+
 const defaultState: AppState = {
-  projects: [],
+  projects: SEED_PROJECTS,
   employees: [],
   documents: []
 };
@@ -68,19 +151,19 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem('omega-tech-state');
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse local state', e);
+      } catch {
+        // fall through to default
       }
     }
     return defaultState;
   });
 
   useEffect(() => {
-    localStorage.setItem('omega-tech-state', JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -143,6 +226,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const importData = (type: 'staff' | 'documents', data: any[]) => {
     if (type === 'staff') {
       const newStaff = data.map(item => ({
+        passportExpiry: '',
+        insuranceStatus: 'Not Set' as const,
+        basicSalary: 0,
+        siteAllowance: 0,
         ...item,
         id: generateId(),
         createdAt: now()
@@ -150,6 +237,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setState(prev => ({ ...prev, employees: [...newStaff, ...prev.employees] }));
     } else if (type === 'documents') {
       const newDocs = data.map(item => ({
+        departmentOwner: '',
+        lastRenewed: '',
+        notes: '',
         ...item,
         id: generateId(),
         createdAt: now()

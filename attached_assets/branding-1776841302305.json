@@ -1,0 +1,131 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Open Sans",
+      "role": "body"
+    },
+    {
+      "family": "Antonio",
+      "role": "heading"
+    }
+  ],
+  "colors": {
+    "primary": "#EAB365",
+    "secondary": "#CCA164",
+    "accent": "#031A4B",
+    "background": "#FFFFFF",
+    "textPrimary": "#031A4B",
+    "link": "#031A4B"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Open Sans",
+      "heading": "Antonio"
+    },
+    "fontStacks": {
+      "heading": [
+        "Antonio",
+        "sans-serif"
+      ],
+      "body": [
+        "Open Sans",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "Antonio",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "100px",
+      "h2": "60px",
+      "body": "15px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "4px"
+  },
+  "components": {
+    "buttonPrimary": {
+      "background": "#EAB365",
+      "textColor": "#031A4B",
+      "borderRadius": "5px",
+      "borderRadiusCorners": {
+        "topLeft": "5px",
+        "topRight": "5px",
+        "bottomRight": "5px",
+        "bottomLeft": "5px"
+      },
+      "shadow": "none"
+    },
+    "buttonSecondary": {
+      "background": "#CCA164",
+      "textColor": "#FFFFFF",
+      "borderRadius": "5px",
+      "borderRadiusCorners": {
+        "topLeft": "5px",
+        "topRight": "5px",
+        "bottomRight": "5px",
+        "bottomLeft": "5px"
+      },
+      "shadow": "none"
+    }
+  },
+  "images": {
+    "logo": "https://www.omega-tc.com/wp-content/uploads/elementor/thumbs/Asset-36-rj7yj68suqhowkf3adqt3e9bqimps07gn3aa0b2qyo.png",
+    "favicon": "https://www.omega-tc.com/wp-content/uploads/2026/03/cropped-fav-32x32.png",
+    "ogImage": null,
+    "logoAlt": "Asset 36"
+  },
+  "__llm_logo_reasoning": {
+    "selectedIndex": 1,
+    "reasoning": "Selected #2 because it is visible, medium-sized, located in the header, and matches the brand inferred from the page title and URL.",
+    "confidence": 0.9,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": 1,
+      "text": "Contact Us",
+      "reasoning": "Button #1 has a vibrant orange background (#EAB365) and action-oriented text 'Contact Us', making it a strong candidate for the primary CTA."
+    },
+    "secondary": {
+      "index": 3,
+      "text": "Download",
+      "reasoning": "Button #3 has a different background color (#CCA164) and serves a secondary action 'Download', fitting the role of a secondary CTA."
+    },
+    "confidence": 0.9
+  },
+  "personality": {
+    "tone": "professional",
+    "energy": "medium",
+    "targetAudience": "business clients"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.9,
+    "colors": 0.95,
+    "overall": 0.925
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 2,
+        "selectedLogoReasoning": "Selected #2 because it is visible, medium-sized, located in the header, and matches the brand inferred from the page title and URL.",
+        "confidence": 0.9
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}
