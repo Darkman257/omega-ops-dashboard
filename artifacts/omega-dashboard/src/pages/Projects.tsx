@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useLocation } from 'wouter';
 import { useAppContext, Project } from '@/context/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Briefcase, Plus, Grid, List, Search, Pencil, Trash2 } from 'lucide-react';
+import { Briefcase, Plus, Grid, List, Search, Pencil, Trash2, ArrowUpRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -29,113 +30,134 @@ const projectSchema = z.object({
   projectValue: z.coerce.number().min(0),
   consultant: z.string().optional(),
   subcontractors: z.string().optional(),
-  completionPercent: z.coerce.number().min(0).max(100)
+  completionPercent: z.coerce.number().min(0).max(100),
+  riskLevel: z.enum(['Low', 'Medium', 'High', 'Critical']),
+  insurancePolicyNumber: z.string().optional(),
+  technicalSpecs: z.string().optional(),
+  pmNotes: z.string().optional(),
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-const defaultFormValues: ProjectFormValues = {
-  name: '',
-  client: '',
-  status: 'Planning',
-  startDate: '',
-  endDate: '',
-  budget: 0,
-  spent: 0,
-  location: '',
-  description: '',
-  projectValue: 0,
-  consultant: '',
-  subcontractors: '',
-  completionPercent: 0
+const emptyDefaults: ProjectFormValues = {
+  name: '', client: '', status: 'Planning', startDate: '', endDate: '',
+  budget: 0, spent: 0, location: '', description: '',
+  projectValue: 0, consultant: '', subcontractors: '',
+  completionPercent: 0, riskLevel: 'Medium',
+  insurancePolicyNumber: '', technicalSpecs: '', pmNotes: ''
 };
 
-function ProjectFormFields({ form }: { form: any }) {
+const statusColors: Record<string, string> = {
+  'Planning': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  'In Progress': 'bg-primary/20 text-primary border-primary/30',
+  'On Hold': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  'Completed': 'bg-green-500/20 text-green-400 border-green-500/30',
+};
+
+const riskColors: Record<string, string> = {
+  'Low': 'bg-green-500/20 text-green-400 border-green-500/30',
+  'Medium': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  'High': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  'Critical': 'bg-red-500/20 text-red-400 border-red-500/30',
+};
+
+function QuickFormFields({ form }: { form: any }) {
+  const iClass = "bg-white/5 border-white/10 text-sm";
   return (
     <div className="space-y-4">
       <FormField control={form.control} name="name" render={({ field }) => (
-        <FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+        <FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
       )} />
       <div className="grid grid-cols-2 gap-3">
         <FormField control={form.control} name="client" render={({ field }) => (
-          <FormItem><FormLabel>Client</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>Client</FormLabel><FormControl><Input {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="status" render={({ field }) => (
           <FormItem>
             <FormLabel>Status</FormLabel>
             <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl><SelectTrigger className="bg-white/5 border-white/10"><SelectValue /></SelectTrigger></FormControl>
+              <FormControl><SelectTrigger className={iClass}><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="Planning">Planning</SelectItem>
-                <SelectItem value="In Progress">In Progress</SelectItem>
-                <SelectItem value="On Hold">On Hold</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
+                {['Planning','In Progress','On Hold','Completed'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-            <FormMessage />
           </FormItem>
         )} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <FormField control={form.control} name="startDate" render={({ field }) => (
-          <FormItem><FormLabel>Start Date</FormLabel><FormControl><Input type="date" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>Start Date</FormLabel><FormControl><Input type="date" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="endDate" render={({ field }) => (
-          <FormItem><FormLabel>End Date</FormLabel><FormControl><Input type="date" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>End Date</FormLabel><FormControl><Input type="date" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
         )} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <FormField control={form.control} name="location" render={({ field }) => (
-          <FormItem><FormLabel>Location</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>Location</FormLabel><FormControl><Input {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField control={form.control} name="completionPercent" render={({ field }) => (
-          <FormItem><FormLabel>Completion %</FormLabel><FormControl><Input type="number" min="0" max="100" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>Completion %</FormLabel><FormControl><Input type="number" min="0" max="100" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
         )} />
       </div>
-
-      <div className="pt-2 border-t border-white/10">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">Financial</p>
-        <div className="grid grid-cols-3 gap-3">
-          <FormField control={form.control} name="projectValue" render={({ field }) => (
-            <FormItem><FormLabel>Project Value ($)</FormLabel><FormControl><Input type="number" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="budget" render={({ field }) => (
-            <FormItem><FormLabel>Budget ($)</FormLabel><FormControl><Input type="number" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="spent" render={({ field }) => (
-            <FormItem><FormLabel>Spent ($)</FormLabel><FormControl><Input type="number" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
-          )} />
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <FormField control={form.control} name="projectValue" render={({ field }) => (
+          <FormItem><FormLabel>Project Value ($)</FormLabel><FormControl><Input type="number" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="budget" render={({ field }) => (
+          <FormItem><FormLabel>Budget ($)</FormLabel><FormControl><Input type="number" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+        )} />
       </div>
-
-      <div className="pt-2 border-t border-white/10">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">Team & Partners</p>
-        <div className="space-y-3">
-          <FormField control={form.control} name="consultant" render={({ field }) => (
-            <FormItem><FormLabel>Consultant Name</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" placeholder="e.g. Dar Al Handasah" /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="subcontractors" render={({ field }) => (
-            <FormItem><FormLabel>Sub-contractors</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" placeholder="Comma-separated" /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="description" render={({ field }) => (
-            <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} className="bg-white/5 border-white/10 resize-none h-20" /></FormControl><FormMessage /></FormItem>
-          )} />
-        </div>
+      <FormField control={form.control} name="consultant" render={({ field }) => (
+        <FormItem><FormLabel>Consultant</FormLabel><FormControl><Input {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+      )} />
+      <FormField control={form.control} name="subcontractors" render={({ field }) => (
+        <FormItem><FormLabel>Sub-contractors (comma-separated)</FormLabel><FormControl><Input {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+      )} />
+      <div className="grid grid-cols-2 gap-3">
+        <FormField control={form.control} name="riskLevel" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Risk Level</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl><SelectTrigger className={iClass}><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent>
+                {['Low','Medium','High','Critical'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="insurancePolicyNumber" render={({ field }) => (
+          <FormItem><FormLabel>Insurance Policy No.</FormLabel><FormControl><Input {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+        )} />
       </div>
+      <FormField control={form.control} name="technicalSpecs" render={({ field }) => (
+        <FormItem><FormLabel>Technical Specifications</FormLabel><FormControl><Textarea {...field} className="bg-white/5 border-white/10 text-sm resize-none h-20" /></FormControl><FormMessage /></FormItem>
+      )} />
+      <FormField control={form.control} name="pmNotes" render={({ field }) => (
+        <FormItem><FormLabel>PM Notes</FormLabel><FormControl><Textarea {...field} className="bg-white/5 border-white/10 text-sm resize-none h-16" /></FormControl><FormMessage /></FormItem>
+      )} />
     </div>
   );
 }
 
-function AddProjectModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function AddModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { addProject } = useAppContext();
-  const form = useForm<ProjectFormValues>({ resolver: zodResolver(projectSchema), defaultValues: defaultFormValues });
+  const form = useForm<ProjectFormValues>({ resolver: zodResolver(projectSchema), defaultValues: emptyDefaults });
 
   const onSubmit = (values: ProjectFormValues) => {
     addProject({
       ...values,
       description: values.description || '',
       consultant: values.consultant || '',
-      subcontractors: values.subcontractors || ''
+      subcontractors: values.subcontractors || '',
+      technicalSpecs: values.technicalSpecs || '',
+      insurancePolicyNumber: values.insurancePolicyNumber || '',
+      pmNotes: values.pmNotes || '',
+      mepDetails: '',
+      civilWorks: '',
+      finishingStatus: '',
+      milestones: [],
+      assignedStaffIds: [],
     });
     onOpenChange(false);
     form.reset();
@@ -143,15 +165,15 @@ function AddProjectModal({ open, onOpenChange }: { open: boolean; onOpenChange: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] bg-card border-white/10 text-foreground p-0">
+      <DialogContent className="sm:max-w-[540px] bg-card border-white/10 text-foreground p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10">
-          <DialogTitle className="text-lg font-semibold">Add New Project</DialogTitle>
+          <DialogTitle>Add New Project</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="max-h-[75vh]">
           <div className="px-6 py-4">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0">
-                <ProjectFormFields form={form} />
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <QuickFormFields form={form} />
                 <div className="pt-4">
                   <Button type="submit" className="w-full" data-testid="button-create-project">Create Project</Button>
                 </div>
@@ -164,24 +186,23 @@ function AddProjectModal({ open, onOpenChange }: { open: boolean; onOpenChange: 
   );
 }
 
-function EditProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
+function EditModal({ project, onClose }: { project: Project; onClose: () => void }) {
   const { updateProject } = useAppContext();
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
-      name: project.name,
-      client: project.client,
-      status: project.status,
-      startDate: project.startDate,
-      endDate: project.endDate,
-      budget: project.budget,
-      spent: project.spent,
-      location: project.location,
+      name: project.name, client: project.client, status: project.status,
+      startDate: project.startDate, endDate: project.endDate,
+      budget: project.budget, spent: project.spent, location: project.location,
       description: project.description || '',
       projectValue: project.projectValue || 0,
       consultant: project.consultant || '',
       subcontractors: project.subcontractors || '',
-      completionPercent: project.completionPercent ?? 0
+      completionPercent: project.completionPercent ?? 0,
+      riskLevel: project.riskLevel || 'Medium',
+      insurancePolicyNumber: project.insurancePolicyNumber || '',
+      technicalSpecs: project.technicalSpecs || '',
+      pmNotes: project.pmNotes || '',
     }
   });
 
@@ -190,22 +211,25 @@ function EditProjectModal({ project, onClose }: { project: Project; onClose: () 
       ...values,
       description: values.description || '',
       consultant: values.consultant || '',
-      subcontractors: values.subcontractors || ''
+      subcontractors: values.subcontractors || '',
+      technicalSpecs: values.technicalSpecs || '',
+      insurancePolicyNumber: values.insurancePolicyNumber || '',
+      pmNotes: values.pmNotes || '',
     });
     onClose();
   };
 
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-[560px] bg-card border-white/10 text-foreground p-0">
+      <DialogContent className="sm:max-w-[540px] bg-card border-white/10 text-foreground p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10">
-          <DialogTitle className="text-lg font-semibold">Edit Project</DialogTitle>
+          <DialogTitle>Edit Project</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="max-h-[75vh]">
           <div className="px-6 py-4">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0">
-                <ProjectFormFields form={form} />
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <QuickFormFields form={form} />
                 <div className="pt-4">
                   <Button type="submit" className="w-full" data-testid="button-save-project">Save Changes</Button>
                 </div>
@@ -220,6 +244,7 @@ function EditProjectModal({ project, onClose }: { project: Project; onClose: () 
 
 export default function Projects() {
   const { projects, deleteProject } = useAppContext();
+  const [, navigate] = useLocation();
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -229,16 +254,6 @@ export default function Projects() {
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.client.toLowerCase().includes(search.toLowerCase())
   );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Planning': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'In Progress': return 'bg-primary/20 text-primary border-primary/30';
-      case 'On Hold': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      case 'Completed': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      default: return 'bg-gray-500/20 text-gray-400';
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -259,8 +274,8 @@ export default function Projects() {
         </div>
       </div>
 
-      <AddProjectModal open={addOpen} onOpenChange={setAddOpen} />
-      {editProject && <EditProjectModal project={editProject} onClose={() => setEditProject(null)} />}
+      <AddModal open={addOpen} onOpenChange={setAddOpen} />
+      {editProject && <EditModal project={editProject} onClose={() => setEditProject(null)} />}
 
       {projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -272,33 +287,43 @@ export default function Projects() {
       ) : (
         <motion.div
           className={view === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'space-y-3'}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
         >
           {filtered.map((project, i) => (
             <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               {view === 'grid' ? (
-                <Card className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-primary/30 transition-all h-full group relative">
+                <Card
+                  className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-primary/40 transition-all h-full group relative cursor-pointer hover:bg-white/[0.07]"
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                  data-testid={`card-project-${project.id}`}
+                >
                   <CardContent className="p-5">
                     <div className="flex justify-between items-start mb-4 gap-2">
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-base line-clamp-1">{project.name}</h3>
+                        <h3 className="font-semibold text-base line-clamp-1 group-hover:text-primary transition-colors">{project.name}</h3>
                         <p className="text-sm text-muted-foreground line-clamp-1">{project.client}</p>
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <Badge className={`${getStatusColor(project.status)} pointer-events-none text-xs`}>{project.status}</Badge>
+                      <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost" size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-all"
-                          onClick={() => setEditProject(project)}
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }}
+                          title="Expand"
+                        >
+                          <ArrowUpRight size={13} />
+                        </Button>
+                        <Button
+                          variant="ghost" size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          onClick={(e) => { e.stopPropagation(); setEditProject(project); }}
                           data-testid={`button-edit-project-${project.id}`}
                         >
                           <Pencil size={13} />
                         </Button>
                         <Button
                           variant="ghost" size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-                          onClick={() => deleteProject(project.id)}
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
                           data-testid={`button-delete-project-${project.id}`}
                         >
                           <Trash2 size={13} />
@@ -309,7 +334,7 @@ export default function Projects() {
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Location</span>
-                        <span className="truncate max-w-[160px] text-right">{project.location}</span>
+                        <span className="truncate max-w-[160px] text-right text-xs">{project.location}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Timeline</span>
@@ -329,25 +354,33 @@ export default function Projects() {
                           <p className="text-xs text-muted-foreground mb-0.5">Project Value</p>
                           <p className="font-semibold text-primary text-sm">{formatCurrency(project.projectValue || project.budget)}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground mb-0.5">Completion</p>
-                          <p className="font-bold text-lg">{project.completionPercent ?? Math.round((project.spent / (project.budget || 1)) * 100)}%</p>
+                        <div className="flex items-center gap-2">
+                          {project.riskLevel && (
+                            <Badge className={`${riskColors[project.riskLevel]} text-[10px] pointer-events-none`}>{project.riskLevel}</Badge>
+                          )}
+                          <Badge className={`${statusColors[project.status]} text-[10px] pointer-events-none`}>{project.status}</Badge>
                         </div>
                       </div>
-                      <div className="w-full bg-white/10 rounded-full h-1.5">
-                        <div
-                          className="bg-primary h-1.5 rounded-full transition-all"
-                          style={{ width: `${project.completionPercent ?? Math.min(100, Math.round((project.spent / (project.budget || 1)) * 100))}%` }}
-                        />
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-white/10 rounded-full h-1.5">
+                          <div
+                            className="bg-primary h-1.5 rounded-full transition-all"
+                            style={{ width: `${project.completionPercent ?? 0}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-bold text-foreground">{project.completionPercent ?? 0}%</span>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-primary/30 transition-colors group">
+                <Card
+                  className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-primary/30 transition-colors group cursor-pointer"
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                >
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm line-clamp-1">{project.name}</h3>
+                      <h3 className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">{project.name}</h3>
                       <p className="text-xs text-muted-foreground">{project.client} · {project.location}</p>
                     </div>
                     {project.consultant && (
@@ -360,12 +393,12 @@ export default function Projects() {
                       <p className="text-xs text-muted-foreground">Value</p>
                       <p className="text-sm font-semibold text-primary">{formatCurrency(project.projectValue || project.budget)}</p>
                     </div>
-                    <div className="w-20 text-center">
+                    <div className="w-16 text-center">
                       <p className="text-xs text-muted-foreground">Done</p>
                       <p className="text-sm font-bold">{project.completionPercent ?? 0}%</p>
                     </div>
-                    <Badge className={`${getStatusColor(project.status)} pointer-events-none text-xs w-24 justify-center`}>{project.status}</Badge>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Badge className={`${statusColors[project.status]} pointer-events-none text-xs w-24 justify-center`}>{project.status}</Badge>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => setEditProject(project)}>
                         <Pencil size={13} />
                       </Button>
