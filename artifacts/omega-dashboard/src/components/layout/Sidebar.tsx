@@ -49,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
             <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary font-bold tracking-tighter border border-primary/20">
               ΩT
             </div>
-            <span className="font-semibold text-lg tracking-tight text-foreground">Omega Tech</span>
+            <span className="font-semibold text-base tracking-tight text-foreground leading-tight">Omega Technical<br/>Contracting</span>
           </motion.div>
         )}
         {collapsed && (

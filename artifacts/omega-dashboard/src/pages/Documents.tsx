@@ -129,8 +129,8 @@ export default function Documents() {
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
             <FileArchive size={32} className="text-primary" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight mb-2">No documents found</h2>
-          <p className="text-muted-foreground mb-6 max-w-[400px]">Keep track of critical contracts, permits, and licenses in one secure place.</p>
+          <h2 className="text-2xl font-bold tracking-tight mb-2">No data available</h2>
+          <p className="text-muted-foreground mb-6 max-w-[400px]">No documents on record. Add entries manually or upload a spreadsheet to populate this module.</p>
           <Button onClick={() => setOpen(true)}><Plus size={16} className="mr-2" /> Add Document</Button>
         </div>
       ) : (

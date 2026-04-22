@@ -169,9 +169,11 @@ export default function Projects() {
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
             <Briefcase size={32} className="text-primary" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight mb-2">No projects yet</h2>
-          <p className="text-muted-foreground mb-6 max-w-[400px]">Get started by creating your first project to track progress, budget, and resources.</p>
-          <Button onClick={() => setOpen(true)}><Plus size={16} className="mr-2" /> Add Project</Button>
+          <h2 className="text-2xl font-bold tracking-tight mb-2">No data available</h2>
+          <p className="text-muted-foreground mb-6 max-w-[400px]">No projects found. Add a project manually or upload a spreadsheet to populate this module.</p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => setOpen(true)}><Plus size={16} className="mr-2" /> Add Project</Button>
+          </div>
         </div>
       ) : (
         <motion.div 

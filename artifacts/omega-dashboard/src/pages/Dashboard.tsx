@@ -145,7 +145,10 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="text-muted-foreground text-sm">No project data available.</div>
+                <div className="text-center space-y-1">
+                  <div className="text-muted-foreground text-sm font-medium">No data available</div>
+                  <div className="text-xs text-muted-foreground/60">Add or upload projects to see status breakdown</div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -197,7 +200,10 @@ export default function Dashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">No staff data available.</div>
+                <div className="text-center space-y-1">
+                  <div className="text-sm text-muted-foreground font-medium">No data available</div>
+                  <div className="text-xs text-muted-foreground/60">Add or upload staff to see department breakdown</div>
+                </div>
               )}
             </CardContent>
           </Card>

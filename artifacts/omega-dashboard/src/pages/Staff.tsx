@@ -128,8 +128,8 @@ export default function Staff() {
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
             <Users size={32} className="text-primary" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight mb-2">No staff added yet</h2>
-          <p className="text-muted-foreground mb-6 max-w-[400px]">Add team members to build your organization's directory and assign them to projects.</p>
+          <h2 className="text-2xl font-bold tracking-tight mb-2">No data available</h2>
+          <p className="text-muted-foreground mb-6 max-w-[400px]">No staff records found. Add employees manually or upload a spreadsheet to populate this module.</p>
           <Button onClick={() => setOpen(true)}><Plus size={16} className="mr-2" /> Add Employee</Button>
         </div>
       ) : (

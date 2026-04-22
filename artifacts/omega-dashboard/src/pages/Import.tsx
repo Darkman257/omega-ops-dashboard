@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import * as XLSX from 'xlsx';
 import { useAppContext } from '@/context/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, FileDown, CheckCircle2, ArrowRight, XCircle, Users } from 'lucide-react';
+import { Upload, FileDown, CheckCircle2, ArrowRight, Users } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 export default function Import() {
@@ -21,54 +22,75 @@ export default function Import() {
   const staffFields = ['name', 'role', 'department', 'phone', 'email', 'status'];
   const docFields = ['name', 'type', 'issuedDate', 'expiryDate'];
   
+  const autoMapHeaders = (headers: string[], targetFields: string[]) => {
+    const initialMappings: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      const lower = h.toLowerCase().trim();
+      let matched = '';
+      if (type === 'staff') {
+        if (lower.includes('name') || lower === 'الاسم' || lower.includes('full')) matched = 'name';
+        else if (lower.includes('role') || lower.includes('job') || lower.includes('title') || lower === 'الوظيفة' || lower.includes('position')) matched = 'role';
+        else if (lower.includes('dept') || lower.includes('department') || lower === 'القسم' || lower.includes('division')) matched = 'department';
+        else if (lower.includes('phone') || lower.includes('tel') || lower.includes('mobile') || lower === 'رقم') matched = 'phone';
+        else if (lower.includes('email') || lower.includes('mail') || lower === 'بريد') matched = 'email';
+        else if (lower.includes('status') || lower === 'حالة' || lower.includes('active')) matched = 'status';
+      } else {
+        if (lower.includes('name') || lower === 'الاسم' || lower.includes('title') || lower.includes('doc')) matched = 'name';
+        else if (lower.includes('type') || lower === 'نوع' || lower.includes('category')) matched = 'type';
+        else if (lower.includes('issue') || lower.includes('start') || lower.includes('created')) matched = 'issuedDate';
+        else if (lower.includes('expir') || lower.includes('end') || lower.includes('valid') || lower.includes('due')) matched = 'expiryDate';
+      }
+      if (matched && targetFields.includes(matched)) {
+        initialMappings[i] = matched;
+      }
+    });
+    return initialMappings;
+  };
+
+  const processSheetData = (headers: string[], data: string[][]) => {
+    const targetFields = type === 'staff' ? staffFields : docFields;
+    setRawHeaders(headers);
+    setRawData(data);
+    setMappings(autoMapHeaders(headers, targetFields));
+    setStep(2);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-      
-      if (lines.length > 0) {
-        const headers = lines[0].split(',').map(h => h.trim());
-        const data = lines.slice(1).map(line => line.split(',').map(c => c.trim()));
-        
-        setRawHeaders(headers);
-        setRawData(data);
-        
-        // Auto-map logic (semantic matching)
-        const initialMappings: Record<string, string> = {};
-        const targetFields = type === 'staff' ? staffFields : docFields;
-        
-        headers.forEach((h, i) => {
-          const lower = h.toLowerCase();
-          let matched = '';
-          
-          if (type === 'staff') {
-            if (lower.includes('name') || lower.includes('الاسم')) matched = 'name';
-            else if (lower.includes('role') || lower.includes('job') || lower.includes('الوظيفة')) matched = 'role';
-            else if (lower.includes('dept') || lower.includes('department') || lower.includes('القسم')) matched = 'department';
-            else if (lower.includes('phone') || lower.includes('tel') || lower.includes('رقم')) matched = 'phone';
-            else if (lower.includes('email') || lower.includes('mail') || lower.includes('بريد')) matched = 'email';
-            else if (lower.includes('status') || lower.includes('حالة')) matched = 'status';
-          } else {
-            if (lower.includes('name') || lower.includes('الاسم')) matched = 'name';
-            else if (lower.includes('type') || lower.includes('نوع')) matched = 'type';
-            else if (lower.includes('issue') || lower.includes('start')) matched = 'issuedDate';
-            else if (lower.includes('expir') || lower.includes('end')) matched = 'expiryDate';
-          }
-          
-          if (matched && targetFields.includes(matched)) {
-            initialMappings[i] = matched;
-          }
-        });
-        
-        setMappings(initialMappings);
-        setStep(2);
-      }
-    };
-    reader.readAsText(file);
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as string[][];
+        if (rows.length > 0) {
+          const headers = rows[0].map(String);
+          const body = rows.slice(1).map(r => r.map(String));
+          processSheetData(headers, body);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length > 0) {
+          const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+          const body = lines.slice(1).map(line =>
+            line.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+          );
+          processSheetData(headers, body);
+        }
+      };
+      reader.readAsText(file);
+    }
   };
 
   const getPreviewData = () => {
@@ -103,8 +125,8 @@ export default function Import() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Smart AI Importer</h1>
-        <p className="text-muted-foreground">Upload and map your enterprise data seamlessly into the command center.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Data Importer</h1>
+        <p className="text-muted-foreground">Upload Excel or CSV files to populate Staff, Projects, and Documents. Headers are auto-detected.</p>
       </div>
 
       {/* Progress Steps */}
@@ -164,15 +186,17 @@ export default function Import() {
                 <div className="mt-8 border-2 border-dashed border-white/10 rounded-xl p-12 text-center hover:bg-white/5 hover:border-primary/50 transition-colors cursor-pointer relative">
                   <input 
                     type="file" 
-                    accept=".csv" 
+                    accept=".csv,.xlsx,.xls" 
                     onChange={handleFileUpload}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    data-testid="input-file-upload"
                   />
                   <Upload size={48} className="mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-xl font-medium text-foreground mb-2">Upload CSV File</h3>
+                  <h3 className="text-xl font-medium text-foreground mb-2">Upload Excel or CSV File</h3>
                   <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                    Drag and drop your file here or click to browse. The system will automatically map Arabic or English headers using AI logic.
+                    Drop your <span className="text-primary font-medium">.xlsx</span>, <span className="text-primary font-medium">.xls</span>, or <span className="text-primary font-medium">.csv</span> file here. Headers are automatically detected — including Arabic column names.
                   </p>
+                  <p className="text-xs text-muted-foreground/60 mt-3">Supported: Excel 97–2019, Excel 365, CSV (comma-separated)</p>
                 </div>
               </div>
             )}
