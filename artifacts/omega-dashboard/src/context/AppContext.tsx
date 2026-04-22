@@ -46,6 +46,7 @@ export interface Employee {
   insuranceStatus: 'Valid' | 'Expired' | 'Not Set';
   basicSalary: number;
   siteAllowance: number;
+  currentSite: string;
   createdAt: string;
 }
 
@@ -62,23 +63,51 @@ export interface DocumentType {
   createdAt: string;
 }
 
+export interface PayrollRecord {
+  id: string;
+  employeeName: string;
+  role: string;
+  department: string;
+  siteName: string;
+  month: string;
+  basicSalary: number;
+  siteAllowance: number;
+  overtimePay: number;
+  deductions: number;
+  netSalary: number;
+  status: 'Paid' | 'Pending' | 'On Hold';
+  notes: string;
+  createdAt: string;
+}
+
 interface AppState {
   projects: Project[];
   employees: Employee[];
   documents: DocumentType[];
+  payrollRecords: PayrollRecord[];
 }
 
 interface AppContextType extends AppState {
-  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => void;
-  updateProject: (id: string, project: Partial<Project>) => void;
+  siteFilter: string;
+  setSiteFilter: (f: string) => void;
+
+  addProject: (p: Omit<Project, 'id' | 'createdAt'>) => void;
+  updateProject: (id: string, p: Partial<Project>) => void;
   deleteProject: (id: string) => void;
-  addEmployee: (employee: Omit<Employee, 'id' | 'createdAt'>) => void;
-  updateEmployee: (id: string, employee: Partial<Employee>) => void;
+
+  addEmployee: (e: Omit<Employee, 'id' | 'createdAt'>) => void;
+  updateEmployee: (id: string, e: Partial<Employee>) => void;
   deleteEmployee: (id: string) => void;
-  addDocument: (doc: Omit<DocumentType, 'id' | 'createdAt'>) => void;
-  updateDocument: (id: string, doc: Partial<DocumentType>) => void;
+
+  addDocument: (d: Omit<DocumentType, 'id' | 'createdAt'>) => void;
+  updateDocument: (id: string, d: Partial<DocumentType>) => void;
   deleteDocument: (id: string) => void;
-  importData: (type: 'staff' | 'documents', data: any[]) => void;
+
+  addPayrollRecord: (r: Omit<PayrollRecord, 'id' | 'createdAt'>) => void;
+  updatePayrollRecord: (id: string, r: Partial<PayrollRecord>) => void;
+  deletePayrollRecord: (id: string) => void;
+
+  importData: (type: 'staff' | 'documents' | 'payroll', data: any[]) => void;
 }
 
 const SEED_PROJECTS: Project[] = [
@@ -165,11 +194,11 @@ const SEED_PROJECTS: Project[] = [
     completionPercent: 100,
     riskLevel: 'Low',
     insurancePolicyNumber: 'OTC-POL-2020-003',
-    technicalSpecs: 'Complete renovation of 2 luxury villas — Villa 12 & Villa 17 — each 650m² GBA over 3 floors.\n\n• Structural crack repair (epoxy injection, DCI Engineers-supervised)\n• New waterproofing on flat roofs and terraces (Sika Sarnafil membrane)\n• Full MEP replacement: PEX plumbing, KNX smart electrical, Daikin VRV IV HVAC\n• Interior: Italian Calacatta marble flooring, custom hardwood (European oak) millwork\n• Smart home: KNX bus system with Busch-Jaeger panels (lighting, climate, blinds, security)\n• Pool refurbishment: mosaic tile lining, Pentair filtration upgrade, LED underwater lighting\n• 32kW rooftop solar PV per villa (on-grid, net metering)',
-    pmNotes: 'Two villas delivered sequentially per client request. Villa 12 handed over December 2021, Villa 17 April 2022. Client requested upgrade to Bulthaup kitchen systems mid-project (VO-001, €42k addition). KNX commissioning required 3-week specialist subcontractor presence. Zero defects raised at final inspection for Villa 12; 7 minor items for Villa 17 — all cleared within 5 working days.',
-    mepDetails: 'Electrical: KNX bus system (Busch-Jaeger IQ panels), LED recessed lighting with dimming, 32kW SunPower solar PV per villa (on-grid).\n\nPlumbing: Rehau PEX-A pipework, Grohe thermostatic shower systems, concealed Geberit cisterns, underfloor heating (ground floor).\n\nHVAC: Daikin VRV IV outdoor units (2×16HP per villa), concealed cassette indoor units in all rooms, Zehnder HRV fresh-air system.',
-    civilWorks: 'Structural assessment report by DCI Engineers — 14 wall/column crack repairs via epoxy injection.\nNew Sika Sarnafil waterproofing membrane: flat roofs, terraces, bathroom wet areas.\nPool refurbishment: existing gunite shell retained, new mosaic tile (Bisazza), Pentair filtration, LED underwater lighting.\nExternal rendered masonry touch-up, new aluminium double-glazed windows (6/12/6 double-low-E).',
-    finishingStatus: 'Villa 12: Handed over Q4 2021. Owner snag list of 0 items. Villa 17: Handed over Q1 2022, 7 minor items cleared within 5 days. 12-month warranty period completed for both villas. Maintenance contracts signed with specialist subcontractors.',
+    technicalSpecs: 'Complete renovation of 2 luxury villas — Villa 12 & Villa 17 — each 650m² GBA over 3 floors.\n\n• Structural crack repair (epoxy injection, DCI Engineers-supervised)\n• New waterproofing on flat roofs and terraces (Sika Sarnafil membrane)\n• Full MEP replacement: PEX plumbing, KNX smart electrical, Daikin VRV IV HVAC\n• Interior: Italian Calacatta marble flooring, custom hardwood (European oak) millwork\n• Smart home: KNX bus system with Busch-Jaeger panels (lighting, climate, blinds, security)\n• Pool refurbishment: mosaic tile lining, Pentair filtration upgrade, LED underwater lighting',
+    pmNotes: 'Two villas delivered sequentially per client request. Villa 12 handed over December 2021, Villa 17 April 2022. Client requested upgrade to Bulthaup kitchen systems mid-project (VO-001, €42k addition). KNX commissioning required 3-week specialist subcontractor presence. Zero defects raised at final inspection for Villa 12; 7 minor items for Villa 17.',
+    mepDetails: 'Electrical: KNX bus system (Busch-Jaeger IQ panels), LED recessed lighting with dimming, 32kW SunPower solar PV per villa.\nPlumbing: Rehau PEX-A pipework, Grohe thermostatic shower systems, concealed Geberit cisterns, underfloor heating (ground floor).\nHVAC: Daikin VRV IV outdoor units, concealed cassette indoor units, Zehnder HRV fresh-air system.',
+    civilWorks: 'Structural assessment report by DCI Engineers — 14 wall/column crack repairs via epoxy injection.\nNew Sika Sarnafil waterproofing membrane: flat roofs, terraces, bathroom wet areas.\nPool refurbishment: existing gunite shell retained, new mosaic tile (Bisazza), Pentair filtration, LED underwater lighting.\nExternal rendered masonry touch-up, new aluminium double-glazed windows.',
+    finishingStatus: 'Villa 12: Handed over Q4 2021. Owner snag list of 0 items. Villa 17: Handed over Q1 2022, 7 minor items cleared within 5 days. 12-month warranty period completed for both villas.',
     milestones: [
       { id: 'kt-m1', title: 'Design, Structural Assessment & Approvals', date: '2020-05-01', completed: true },
       { id: 'kt-m2', title: 'Demolition, Structural Repairs & Waterproofing', date: '2020-08-01', completed: true },
@@ -198,11 +227,11 @@ const SEED_PROJECTS: Project[] = [
     completionPercent: 100,
     riskLevel: 'Medium',
     insurancePolicyNumber: 'OTC-POL-2022-004',
-    technicalSpecs: 'MEP installation and interior finishing for Allegria compound amenities.\n\n• Clubhouse fit-out (1,200m²): Knauf drywall partitions, Armstrong suspended ceilings\n• Sports facilities: resurfaced tennis/padel courts, gym fit-out with rubber flooring\n• Common area upgrade: 8 residential cluster lobbies, concierge areas\n• EV charging stations: 24 points (Type 2, 22kW AC), future-proofed for DC fast-charge\n• BMS integration: Delta Controls, covering HVAC, lighting, access control, CCTV\n• Pool area: non-slip Porcelain R12 tiles, stainless steel handrails, new heat pump heating',
-    pmNotes: 'Project phased across 3 clusters per quarter to minimise resident disruption. SODIC community relations team embedded with our PM. BMS integration required coordination with 3 incumbent subcontractors — managed via weekly technical coordination meetings. 2 scope additions approved: EV chargers (VO-001, $320k) and clubhouse AV system (VO-002, $85k). Final SODIC QA inspection passed first attempt.',
-    mepDetails: 'Electrical: LV distribution upgrade with new Schneider Electric DB boards throughout. LED lighting to IES RP-28 standards. EV charging (24×22kW AC, ABB Terra units). Emergency lighting and addressable fire alarm per NFPA 72.\n\nPlumbing: Full replacement of communal hot water circuits (central heat pump system, 2×500L buffer tanks). New irrigation mains DN80 with Bermad pressure regulation.\n\nHVAC: Daikin VRF systems for clubhouse (60HP), MVHR units for basement car park, BMS-controlled AHUs. Pool heat pump system (Hayward).',
-    civilWorks: 'Clubhouse: Internal partition system (Knauf CW/UW 100mm drywall, 60-min fire-rated where required). Suspended ceilings: Armstrong Ultima Tegular. External hardscape: Granite sett paving, timber composite decking.\nPool area: Non-slip porcelain R12 tiles, stainless steel 316 handrails and channel drainage.\nSports courts: Macadam resurfacing with acrylic colour coat. Court lighting upgrade to 500 lux LED.\nGeneral: Full redecoration of 8 cluster lobbies, new signage and wayfinding system.',
-    finishingStatus: 'Clubhouse interiors and MEP completed July 2024. BMS commissioning and SCADA handover to SODIC FM team complete. SODIC QA approval received July 29, 2024. Currently in 12-month defects liability period (ends July 2025). Monthly site inspections ongoing.',
+    technicalSpecs: 'MEP installation and interior finishing for Allegria compound amenities.\n\n• Clubhouse fit-out (1,200m²): Knauf drywall partitions, Armstrong suspended ceilings\n• Sports facilities: resurfaced tennis/padel courts, gym fit-out with rubber flooring\n• EV charging stations: 24 points (Type 2, 22kW AC)\n• BMS integration: Delta Controls, covering HVAC, lighting, access control, CCTV\n• Pool area: non-slip Porcelain R12 tiles, stainless steel handrails',
+    pmNotes: 'Project phased across 3 clusters per quarter to minimise resident disruption. SODIC community relations team embedded with our PM. 2 scope additions approved: EV chargers (VO-001, $320k) and clubhouse AV system (VO-002, $85k). Final SODIC QA inspection passed first attempt.',
+    mepDetails: 'Electrical: LV distribution upgrade, Schneider Electric DB boards throughout. LED lighting to IES RP-28. EV charging (24×22kW AC, ABB Terra units). Emergency lighting and addressable fire alarm per NFPA 72.\nPlumbing: Full replacement of communal hot water circuits (central heat pump system). New irrigation mains DN80.\nHVAC: Daikin VRF systems for clubhouse (60HP), MVHR units for basement car park.',
+    civilWorks: 'Clubhouse: Internal partition system (Knauf CW/UW 100mm drywall). Suspended ceilings: Armstrong Ultima Tegular.\nExternal hardscape: Granite sett paving, timber composite decking.\nSports courts: Macadam resurfacing with acrylic colour coat, court lighting upgrade to 500 lux LED.\nGeneral: Full redecoration of 8 cluster lobbies.',
+    finishingStatus: 'Clubhouse interiors and MEP completed July 2024. BMS commissioning and SCADA handover to SODIC FM team complete. SODIC QA approval received July 29, 2024. Currently in 12-month defects liability period (ends July 2025).',
     milestones: [
       { id: 'sd-m1', title: 'Project Mobilization & Design Finalization', date: '2022-06-01', completed: true },
       { id: 'sd-m2', title: 'MEP Design Approval & Procurement', date: '2022-10-01', completed: true },
@@ -231,11 +260,11 @@ const SEED_PROJECTS: Project[] = [
     completionPercent: 100,
     riskLevel: 'High',
     insurancePolicyNumber: 'OTC-POL-2021-005',
-    technicalSpecs: 'Construction of 18 beach villas (280–450m² each) and 2 F&B hospitality pavilions.\n\n• Raft foundation design for sandy coastal soil conditions (geotechnical per Dar Al Handasah)\n• Reinforced concrete frame C30/35 (coastal exposure class XS3)\n• External rendered masonry with 80mm EPS thermal insulation, glass fibre mesh coat\n• Carrier Aqualzone central HVAC plant serving 8 villa clusters\n• Full MEP installation per NFPA 101 and local civil defence authority\n• Private pool per villa: gunite shell, Bisazza mosaic finish, heat pump heating\n• Beach access pathways: boardwalk timber composite, dune stabilisation',
-    pmNotes: 'Largest project delivered to date. Complex phased programme: Phase 1 (12 villas) and Phase 2 (6 villas + 2 pavilions). Coastal location required enhanced corrosion protection throughout — stainless steel 316L fixings, marine-grade coatings on all external metalwork. Red Sea storm event in September 2022 caused 3-week programme delay — mitigated through weekend working. Emaar Misr final acceptance issued without major outstanding items.',
-    mepDetails: 'Electrical: Schneider Electric MV/LV distribution network, solar PV ready DC infrastructure per villa, addressable fire detection per NFPA 72, CCTV and access control.\n\nPlumbing: PPR hot/cold systems with solar thermal DHW collectors (Apricus, 30-tube per villa), marine-grade fixtures throughout.\n\nHVAC: Carrier Aqualzone central plant (2×300TR) serving 3 villa clusters each, chilled water distribution, 4-pipe FCUs per room. Beach pavilions: split system DX with ERV.',
-    civilWorks: 'Raft foundations: 600mm thick reinforced concrete on 150mm blinding, designed for net bearing pressure 80 kPa on coastal sand.\nRC frame: C30/35 (XS3 exposure), 50mm minimum cover, epoxy-coated rebar in splash zone.\nExternal walls: 200mm dense block, 80mm EPS, 10mm GFRC rendered coat.\nPool construction: Gunite shell (300mm), Bisazza glass mosaic finish, Pentair filtration.\nRoadways: Asphalt 80mm base + 40mm wearing on compacted sub-base. Beach boardwalk: Accoya timber composite on galvanised steel subframe.',
-    finishingStatus: 'Phase 1 (12 villas): Formally handed over April 15, 2023 — Emaar acceptance issued with 4 minor items, cleared within 7 days. Phase 2 (6 villas + 2 pavilions): Handed over October 31, 2023 — zero outstanding items. Full as-built documentation (CAD and BIM) submitted. Operation & Maintenance manuals delivered to Emaar FM team.',
+    technicalSpecs: 'Construction of 18 beach villas (280–450m² each) and 2 F&B hospitality pavilions.\n\n• Raft foundation design for sandy coastal soil conditions\n• Reinforced concrete frame C30/35 (coastal exposure class XS3)\n• External rendered masonry with 80mm EPS thermal insulation\n• Carrier Aqualzone central HVAC plant serving 8 villa clusters\n• Full MEP installation per NFPA 101\n• Private pool per villa: gunite shell, Bisazza mosaic finish, heat pump heating',
+    pmNotes: 'Largest project delivered to date. Complex phased programme: Phase 1 (12 villas) and Phase 2 (6 villas + 2 pavilions). Coastal location required enhanced corrosion protection throughout — stainless steel 316L fixings. Red Sea storm event in September 2022 caused 3-week programme delay — mitigated through weekend working.',
+    mepDetails: 'Electrical: Schneider Electric MV/LV distribution network, solar PV ready DC infrastructure, addressable fire detection per NFPA 72.\nPlumbing: PPR hot/cold systems with solar thermal DHW collectors (Apricus, 30-tube per villa), marine-grade fixtures.\nHVAC: Carrier Aqualzone central plant (2×300TR), chilled water distribution, 4-pipe FCUs per room.',
+    civilWorks: 'Raft foundations: 600mm thick reinforced concrete on 150mm blinding.\nRC frame: C30/35 (XS3 exposure), 50mm minimum cover, epoxy-coated rebar in splash zone.\nExternal walls: 200mm dense block, 80mm EPS, 10mm GFRC rendered coat.\nPool construction: Gunite shell (300mm), Bisazza glass mosaic finish, Pentair filtration.',
+    finishingStatus: 'Phase 1 (12 villas): Formally handed over April 15, 2023. Phase 2 (6 villas + 2 pavilions): Handed over October 31, 2023 — zero outstanding items. Full as-built documentation submitted to Emaar FM team.',
     milestones: [
       { id: 'mr-m1', title: 'Site Mobilization & Foundation Works', date: '2021-02-01', completed: true },
       { id: 'mr-m2', title: 'Concrete Frame — Phase 1 Complete', date: '2021-09-01', completed: true },
@@ -254,7 +283,8 @@ const STORAGE_KEY = 'omega-tc-v3';
 const defaultState: AppState = {
   projects: SEED_PROJECTS,
   employees: [],
-  documents: []
+  documents: [],
+  payrollRecords: []
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -264,13 +294,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          ...defaultState,
+          ...parsed,
+          payrollRecords: parsed.payrollRecords ?? []
+        };
       } catch {
-        // fall through to default
+        // fall through
       }
     }
     return defaultState;
   });
+
+  const [siteFilter, setSiteFilter] = useState('');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -279,91 +316,91 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const generateId = () => Math.random().toString(36).substr(2, 9);
   const now = () => new Date().toISOString();
 
-  const addProject = (project: Omit<Project, 'id' | 'createdAt'>) => {
-    setState(prev => ({
-      ...prev,
-      projects: [{ ...project, id: generateId(), createdAt: now() }, ...prev.projects]
-    }));
-  };
+  const addProject = (p: Omit<Project, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, projects: [{ ...p, id: generateId(), createdAt: now() }, ...prev.projects] }));
 
-  const updateProject = (id: string, updates: Partial<Project>) => {
-    setState(prev => ({
-      ...prev,
-      projects: prev.projects.map(p => p.id === id ? { ...p, ...updates } : p)
-    }));
-  };
+  const updateProject = (id: string, updates: Partial<Project>) =>
+    setState(prev => ({ ...prev, projects: prev.projects.map(p => p.id === id ? { ...p, ...updates } : p) }));
 
-  const deleteProject = (id: string) => {
+  const deleteProject = (id: string) =>
     setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
-  };
 
-  const addEmployee = (employee: Omit<Employee, 'id' | 'createdAt'>) => {
-    setState(prev => ({
-      ...prev,
-      employees: [{ ...employee, id: generateId(), createdAt: now() }, ...prev.employees]
-    }));
-  };
+  const addEmployee = (e: Omit<Employee, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, employees: [{ ...e, id: generateId(), createdAt: now() }, ...prev.employees] }));
 
-  const updateEmployee = (id: string, updates: Partial<Employee>) => {
-    setState(prev => ({
-      ...prev,
-      employees: prev.employees.map(e => e.id === id ? { ...e, ...updates } : e)
-    }));
-  };
+  const updateEmployee = (id: string, updates: Partial<Employee>) =>
+    setState(prev => ({ ...prev, employees: prev.employees.map(e => e.id === id ? { ...e, ...updates } : e) }));
 
-  const deleteEmployee = (id: string) => {
+  const deleteEmployee = (id: string) =>
     setState(prev => ({ ...prev, employees: prev.employees.filter(e => e.id !== id) }));
-  };
 
-  const addDocument = (doc: Omit<DocumentType, 'id' | 'createdAt'>) => {
-    setState(prev => ({
-      ...prev,
-      documents: [{ ...doc, id: generateId(), createdAt: now() }, ...prev.documents]
-    }));
-  };
+  const addDocument = (d: Omit<DocumentType, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, documents: [{ ...d, id: generateId(), createdAt: now() }, ...prev.documents] }));
 
-  const updateDocument = (id: string, updates: Partial<DocumentType>) => {
-    setState(prev => ({
-      ...prev,
-      documents: prev.documents.map(d => d.id === id ? { ...d, ...updates } : d)
-    }));
-  };
+  const updateDocument = (id: string, updates: Partial<DocumentType>) =>
+    setState(prev => ({ ...prev, documents: prev.documents.map(d => d.id === id ? { ...d, ...updates } : d) }));
 
-  const deleteDocument = (id: string) => {
+  const deleteDocument = (id: string) =>
     setState(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }));
-  };
 
-  const importData = (type: 'staff' | 'documents', data: any[]) => {
+  const addPayrollRecord = (r: Omit<PayrollRecord, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, payrollRecords: [{ ...r, id: generateId(), createdAt: now() }, ...prev.payrollRecords] }));
+
+  const updatePayrollRecord = (id: string, updates: Partial<PayrollRecord>) =>
+    setState(prev => ({ ...prev, payrollRecords: prev.payrollRecords.map(r => r.id === id ? { ...r, ...updates } : r) }));
+
+  const deletePayrollRecord = (id: string) =>
+    setState(prev => ({ ...prev, payrollRecords: prev.payrollRecords.filter(r => r.id !== id) }));
+
+  const importData = (type: 'staff' | 'documents' | 'payroll', data: any[]) => {
     if (type === 'staff') {
-      const newStaff = data.map(item => ({
-        passportExpiry: '',
-        insuranceStatus: 'Not Set' as const,
-        basicSalary: 0,
-        siteAllowance: 0,
-        ...item,
-        id: generateId(),
-        createdAt: now()
+      const items = data.map(item => ({
+        passportExpiry: '', insuranceStatus: 'Not Set' as const,
+        basicSalary: 0, siteAllowance: 0, currentSite: '',
+        ...item, id: generateId(), createdAt: now()
       })) as Employee[];
-      setState(prev => ({ ...prev, employees: [...newStaff, ...prev.employees] }));
+      setState(prev => ({ ...prev, employees: [...items, ...prev.employees] }));
     } else if (type === 'documents') {
-      const newDocs = data.map(item => ({
-        departmentOwner: '',
-        lastRenewed: '',
-        notes: '',
-        ...item,
-        id: generateId(),
-        createdAt: now()
+      const items = data.map(item => ({
+        departmentOwner: '', lastRenewed: '', notes: '',
+        ...item, id: generateId(), createdAt: now()
       })) as DocumentType[];
-      setState(prev => ({ ...prev, documents: [...newDocs, ...prev.documents] }));
+      setState(prev => ({ ...prev, documents: [...items, ...prev.documents] }));
+    } else if (type === 'payroll') {
+      const items = data.map(item => {
+        const basic = Number(item.basicSalary || item.basic_salary || 0);
+        const allowance = Number(item.siteAllowance || item.site_allowance || item.allowance || 0);
+        const overtime = Number(item.overtimePay || item.overtime || 0);
+        const deductions = Number(item.deductions || 0);
+        return {
+          employeeName: item.employeeName || item.employee_name || item.name || '',
+          role: item.role || '',
+          department: item.department || '',
+          siteName: item.siteName || item.site_name || item.site || '',
+          month: item.month || '',
+          basicSalary: basic,
+          siteAllowance: allowance,
+          overtimePay: overtime,
+          deductions,
+          netSalary: basic + allowance + overtime - deductions,
+          status: (item.status as any) || 'Pending',
+          notes: item.notes || '',
+          id: generateId(),
+          createdAt: now()
+        } as PayrollRecord;
+      });
+      setState(prev => ({ ...prev, payrollRecords: [...items, ...prev.payrollRecords] }));
     }
   };
 
   return (
     <AppContext.Provider value={{
       ...state,
+      siteFilter, setSiteFilter,
       addProject, updateProject, deleteProject,
       addEmployee, updateEmployee, deleteEmployee,
       addDocument, updateDocument, deleteDocument,
+      addPayrollRecord, updatePayrollRecord, deletePayrollRecord,
       importData
     }}>
       {children}
@@ -372,7 +409,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 };
 
 export const useAppContext = () => {
-  const context = useContext(AppContext);
-  if (!context) throw new Error('useAppContext must be used within AppProvider');
-  return context;
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('useAppContext must be used within AppProvider');
+  return ctx;
 };

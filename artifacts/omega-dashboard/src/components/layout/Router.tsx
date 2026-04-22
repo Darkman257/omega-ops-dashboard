@@ -5,6 +5,7 @@ import Dashboard from "@/pages/Dashboard";
 import Projects from "@/pages/Projects";
 import ProjectDetail from "@/pages/ProjectDetail";
 import Staff from "@/pages/Staff";
+import Payroll from "@/pages/Payroll";
 import Documents from "@/pages/Documents";
 import Import from "@/pages/Import";
 import NotFound from "@/pages/not-found";
@@ -17,6 +18,7 @@ export function Router() {
         <Route path="/projects" component={Projects} />
         <Route path="/projects/:id" component={ProjectDetail} />
         <Route path="/staff" component={Staff} />
+        <Route path="/payroll" component={Payroll} />
         <Route path="/documents" component={Documents} />
         <Route path="/import" component={Import} />
         <Route component={NotFound} />

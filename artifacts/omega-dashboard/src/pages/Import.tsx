@@ -7,73 +7,98 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, FileDown, CheckCircle2, ArrowRight, Users } from 'lucide-react';
+import { Upload, FileDown, CheckCircle2, ArrowRight, Users, Banknote, FileText } from 'lucide-react';
 import { useLocation } from 'wouter';
+
+type ImportType = 'staff' | 'documents' | 'payroll';
+
+const TYPE_CONFIG: Record<ImportType, { label: string; icon: any; fields: string[]; description: string }> = {
+  staff: {
+    label: 'Staff Directory',
+    icon: Users,
+    fields: ['name', 'role', 'department', 'phone', 'email', 'status'],
+    description: 'Import employee records including contact details and department'
+  },
+  documents: {
+    label: 'Document Control',
+    icon: FileDown,
+    fields: ['name', 'type', 'issuedDate', 'expiryDate'],
+    description: 'Import contracts, permits, and licenses with expiry dates'
+  },
+  payroll: {
+    label: 'Payroll & Attendance',
+    icon: Banknote,
+    fields: ['employeeName', 'role', 'department', 'siteName', 'month', 'basicSalary', 'siteAllowance', 'overtimePay', 'deductions', 'status'],
+    description: 'Import payroll records — Net Salary is auto-calculated from the imported fields'
+  }
+};
+
+function autoMap(headers: string[], type: ImportType): Record<string, string> {
+  const map: Record<string, string> = {};
+  headers.forEach((h, i) => {
+    const l = h.toLowerCase().trim();
+    let matched = '';
+    if (type === 'staff') {
+      if (l.includes('name') || l === 'الاسم' || l.includes('full')) matched = 'name';
+      else if (l.includes('role') || l.includes('job') || l.includes('title') || l === 'الوظيفة' || l.includes('position')) matched = 'role';
+      else if (l.includes('dept') || l.includes('department') || l === 'القسم' || l.includes('division')) matched = 'department';
+      else if (l.includes('phone') || l.includes('tel') || l.includes('mobile') || l === 'رقم') matched = 'phone';
+      else if (l.includes('email') || l.includes('mail') || l === 'بريد') matched = 'email';
+      else if (l.includes('status') || l === 'حالة' || l.includes('active')) matched = 'status';
+    } else if (type === 'documents') {
+      if (l.includes('name') || l === 'الاسم' || l.includes('title') || l.includes('doc')) matched = 'name';
+      else if (l.includes('type') || l === 'نوع' || l.includes('category')) matched = 'type';
+      else if (l.includes('issue') || l.includes('start') || l.includes('created')) matched = 'issuedDate';
+      else if (l.includes('expir') || l.includes('end') || l.includes('valid') || l.includes('due')) matched = 'expiryDate';
+    } else if (type === 'payroll') {
+      if (l.includes('emp') || l.includes('name') || l === 'الاسم' || l.includes('worker')) matched = 'employeeName';
+      else if (l.includes('role') || l.includes('title') || l.includes('position')) matched = 'role';
+      else if (l.includes('dept') || l.includes('department') || l === 'القسم') matched = 'department';
+      else if (l.includes('site') || l.includes('project') || l.includes('location')) matched = 'siteName';
+      else if (l.includes('month') || l.includes('period') || l.includes('date')) matched = 'month';
+      else if (l === 'basic' || l.includes('basic_') || l.includes('base')) matched = 'basicSalary';
+      else if (l.includes('allow') || l.includes('site_allow')) matched = 'siteAllowance';
+      else if (l.includes('over') || l.includes('extra')) matched = 'overtimePay';
+      else if (l.includes('deduct') || l.includes('absent')) matched = 'deductions';
+      else if (l.includes('status') || l.includes('paid')) matched = 'status';
+    }
+    if (matched && TYPE_CONFIG[type].fields.includes(matched)) {
+      map[i] = matched;
+    }
+  });
+  return map;
+}
 
 export default function Import() {
   const { importData } = useAppContext();
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
-  const [type, setType] = useState<'staff' | 'documents'>('staff');
+  const [type, setType] = useState<ImportType>('staff');
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
   const [rawData, setRawData] = useState<string[][]>([]);
   const [mappings, setMappings] = useState<Record<string, string>>({});
 
-  const staffFields = ['name', 'role', 'department', 'phone', 'email', 'status'];
-  const docFields = ['name', 'type', 'issuedDate', 'expiryDate'];
-  
-  const autoMapHeaders = (headers: string[], targetFields: string[]) => {
-    const initialMappings: Record<string, string> = {};
-    headers.forEach((h, i) => {
-      const lower = h.toLowerCase().trim();
-      let matched = '';
-      if (type === 'staff') {
-        if (lower.includes('name') || lower === 'الاسم' || lower.includes('full')) matched = 'name';
-        else if (lower.includes('role') || lower.includes('job') || lower.includes('title') || lower === 'الوظيفة' || lower.includes('position')) matched = 'role';
-        else if (lower.includes('dept') || lower.includes('department') || lower === 'القسم' || lower.includes('division')) matched = 'department';
-        else if (lower.includes('phone') || lower.includes('tel') || lower.includes('mobile') || lower === 'رقم') matched = 'phone';
-        else if (lower.includes('email') || lower.includes('mail') || lower === 'بريد') matched = 'email';
-        else if (lower.includes('status') || lower === 'حالة' || lower.includes('active')) matched = 'status';
-      } else {
-        if (lower.includes('name') || lower === 'الاسم' || lower.includes('title') || lower.includes('doc')) matched = 'name';
-        else if (lower.includes('type') || lower === 'نوع' || lower.includes('category')) matched = 'type';
-        else if (lower.includes('issue') || lower.includes('start') || lower.includes('created')) matched = 'issuedDate';
-        else if (lower.includes('expir') || lower.includes('end') || lower.includes('valid') || lower.includes('due')) matched = 'expiryDate';
-      }
-      if (matched && targetFields.includes(matched)) {
-        initialMappings[i] = matched;
-      }
-    });
-    return initialMappings;
-  };
+  const cfg = TYPE_CONFIG[type];
 
   const processSheetData = (headers: string[], data: string[][]) => {
-    const targetFields = type === 'staff' ? staffFields : docFields;
     setRawHeaders(headers);
     setRawData(data);
-    setMappings(autoMapHeaders(headers, targetFields));
+    setMappings(autoMap(headers, type));
     setStep(2);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-
     if (isExcel) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as string[][];
-        if (rows.length > 0) {
-          const headers = rows[0].map(String);
-          const body = rows.slice(1).map(r => r.map(String));
-          processSheetData(headers, body);
-        }
+        if (rows.length > 0) processSheetData(rows[0].map(String), rows.slice(1).map(r => r.map(String)));
       };
       reader.readAsArrayBuffer(file);
     } else {
@@ -83,9 +108,7 @@ export default function Import() {
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         if (lines.length > 0) {
           const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-          const body = lines.slice(1).map(line =>
-            line.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
-          );
+          const body = lines.slice(1).map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
           processSheetData(headers, body);
         }
       };
@@ -93,55 +116,42 @@ export default function Import() {
     }
   };
 
-  const getPreviewData = () => {
-    return rawData.slice(0, 5).map(row => {
+  const getPreviewData = () =>
+    rawData.slice(0, 5).map(row => {
       const obj: any = {};
       Object.entries(mappings).forEach(([idx, field]) => {
-        if (field && field !== 'ignore') {
-          obj[field] = row[parseInt(idx)] || '';
-        }
+        if (field && field !== 'ignore') obj[field] = row[parseInt(idx)] || '';
       });
       return obj;
     });
-  };
 
   const handleImport = () => {
     const allData = rawData.map(row => {
       const obj: any = {};
       Object.entries(mappings).forEach(([idx, field]) => {
-        if (field && field !== 'ignore') {
-          obj[field] = row[parseInt(idx)] || '';
-        }
+        if (field && field !== 'ignore') obj[field] = row[parseInt(idx)] || '';
       });
       return obj;
     });
-
     importData(type, allData);
     setStep(4);
   };
 
-  const targetFields = type === 'staff' ? staffFields : docFields;
+  const redirectTarget = type === 'staff' ? '/staff' : type === 'payroll' ? '/payroll' : '/documents';
+  const redirectLabel = type === 'staff' ? 'Staff Directory' : type === 'payroll' ? 'Payroll' : 'Documents';
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Data Importer</h1>
-        <p className="text-muted-foreground">Upload Excel or CSV files to populate Staff, Projects, and Documents. Headers are auto-detected.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Smart Data Importer</h1>
+        <p className="text-muted-foreground">Upload Excel or CSV files to populate Staff, Payroll, or Documents. Headers are auto-detected — including Arabic column names.</p>
       </div>
 
-      {/* Progress Steps */}
       <div className="flex items-center justify-between mb-8 relative">
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-px bg-white/10 z-0"></div>
-        {[
-          { num: 1, label: 'Upload' },
-          { num: 2, label: 'Map Data' },
-          { num: 3, label: 'Preview' },
-          { num: 4, label: 'Complete' }
-        ].map((s) => (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-px bg-white/10 z-0" />
+        {[{ num: 1, label: 'Upload' }, { num: 2, label: 'Map Data' }, { num: 3, label: 'Preview' }, { num: 4, label: 'Complete' }].map(s => (
           <div key={s.num} className="relative z-10 flex flex-col items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium transition-colors ${
-              step >= s.num ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(201,168,76,0.3)]' : 'bg-sidebar border border-white/10 text-muted-foreground'
-            }`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium transition-colors ${step >= s.num ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(201,168,76,0.3)]' : 'bg-sidebar border border-white/10 text-muted-foreground'}`}>
               {step > s.num ? <CheckCircle2 size={16} /> : s.num}
             </div>
             <span className={`text-xs ${step >= s.num ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{s.label}</span>
@@ -149,44 +159,38 @@ export default function Import() {
         ))}
       </div>
 
-      <motion.div
-        key={step}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
-      >
+      <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
         <Card className="bg-white/5 backdrop-blur-sm border-white/10">
           <CardContent className="p-8">
             {step === 1 && (
               <div className="space-y-6">
                 <div>
                   <Label className="text-lg font-medium mb-4 block">What are you importing?</Label>
-                  <div className="flex gap-4">
-                    <Button 
-                      type="button" 
-                      variant={type === 'staff' ? 'default' : 'outline'} 
-                      className={`flex-1 h-24 flex flex-col gap-2 ${type !== 'staff' ? 'bg-white/5 border-white/10 hover:bg-white/10 text-foreground' : ''}`}
-                      onClick={() => setType('staff')}
-                    >
-                      <Users size={24} />
-                      <span>Staff Directory</span>
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant={type === 'documents' ? 'default' : 'outline'} 
-                      className={`flex-1 h-24 flex flex-col gap-2 ${type !== 'documents' ? 'bg-white/5 border-white/10 hover:bg-white/10 text-foreground' : ''}`}
-                      onClick={() => setType('documents')}
-                    >
-                      <FileDown size={24} />
-                      <span>Document Control</span>
-                    </Button>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(Object.entries(TYPE_CONFIG) as [ImportType, typeof TYPE_CONFIG[ImportType]][]).map(([key, cfg]) => (
+                      <Button
+                        key={key}
+                        type="button"
+                        variant={type === key ? 'default' : 'outline'}
+                        className={`h-24 flex flex-col gap-2 ${type !== key ? 'bg-white/5 border-white/10 hover:bg-white/10 text-foreground' : ''}`}
+                        onClick={() => setType(key)}
+                      >
+                        <cfg.icon size={22} />
+                        <span className="text-sm">{cfg.label}</span>
+                      </Button>
+                    ))}
                   </div>
+                  {cfg.description && (
+                    <p className="text-sm text-muted-foreground mt-3 bg-white/5 border border-white/10 rounded-lg px-4 py-3">
+                      {cfg.description}
+                    </p>
+                  )}
                 </div>
 
-                <div className="mt-8 border-2 border-dashed border-white/10 rounded-xl p-12 text-center hover:bg-white/5 hover:border-primary/50 transition-colors cursor-pointer relative">
-                  <input 
-                    type="file" 
-                    accept=".csv,.xlsx,.xls" 
+                <div className="mt-6 border-2 border-dashed border-white/10 rounded-xl p-12 text-center hover:bg-white/5 hover:border-primary/50 transition-colors cursor-pointer relative">
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
                     onChange={handleFileUpload}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     data-testid="input-file-upload"
@@ -203,34 +207,30 @@ export default function Import() {
 
             {step === 2 && (
               <div className="space-y-6">
-                <h3 className="text-xl font-medium mb-4">Map Columns</h3>
-                <p className="text-sm text-muted-foreground mb-6">We've automatically detected headers. Please review and adjust the mapping below.</p>
-                
-                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <h3 className="text-xl font-medium mb-2">Map Columns</h3>
+                <p className="text-sm text-muted-foreground">Auto-detected headers. Adjust the mapping below if needed.</p>
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                   {rawHeaders.map((header, idx) => (
-                    <div key={idx} className="flex items-center gap-4 bg-white/5 p-4 rounded-lg border border-white/10">
-                      <div className="flex-1 font-medium text-sm">{header} <span className="text-xs text-muted-foreground block font-normal mt-1">Sample: {rawData[0]?.[idx] || 'N/A'}</span></div>
-                      <ArrowRight size={16} className="text-muted-foreground" />
+                    <div key={idx} className="flex items-center gap-4 bg-white/5 p-3 rounded-lg border border-white/10">
+                      <div className="flex-1 font-medium text-sm">
+                        {header}
+                        <span className="text-xs text-muted-foreground block font-normal mt-0.5">Sample: {rawData[0]?.[idx] || 'N/A'}</span>
+                      </div>
+                      <ArrowRight size={14} className="text-muted-foreground flex-shrink-0" />
                       <div className="flex-1">
-                        <Select 
-                          value={mappings[idx] || 'ignore'} 
-                          onValueChange={(val) => setMappings({ ...mappings, [idx]: val })}
-                        >
-                          <SelectTrigger className="bg-background border-white/10">
+                        <Select value={mappings[idx] || 'ignore'} onValueChange={(v) => setMappings({ ...mappings, [idx]: v })}>
+                          <SelectTrigger className="bg-background border-white/10 text-sm h-8">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ignore">-- Ignore Column --</SelectItem>
-                            {targetFields.map(field => (
-                              <SelectItem key={field} value={field}>{field}</SelectItem>
-                            ))}
+                            {cfg.fields.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
                   ))}
                 </div>
-
                 <div className="flex justify-between pt-4 border-t border-white/10">
                   <Button variant="outline" onClick={() => setStep(1)} className="bg-transparent border-white/10">Back</Button>
                   <Button onClick={() => setStep(3)}>Continue to Preview</Button>
@@ -240,31 +240,27 @@ export default function Import() {
 
             {step === 3 && (
               <div className="space-y-6">
-                <h3 className="text-xl font-medium mb-4">Preview Data</h3>
-                <p className="text-sm text-muted-foreground mb-6">Review a sample of how the data will appear in the system.</p>
-                
-                <div className="rounded-md border border-white/10 overflow-hidden">
+                <h3 className="text-xl font-medium">Preview Data</h3>
+                <p className="text-sm text-muted-foreground">Review a sample of how the data will appear.</p>
+                <div className="rounded-md border border-white/10 overflow-hidden overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-white/5">
                       <TableRow className="border-white/10">
-                        {targetFields.map(field => (
-                          <TableHead key={field} className="capitalize text-muted-foreground">{field}</TableHead>
-                        ))}
+                        {cfg.fields.map(f => <TableHead key={f} className="capitalize text-muted-foreground text-xs">{f}</TableHead>)}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {getPreviewData().map((row, i) => (
                         <TableRow key={i} className="border-white/10">
-                          {targetFields.map(field => (
-                            <TableCell key={field} className="text-sm">{row[field] || <span className="text-muted-foreground/50">-</span>}</TableCell>
+                          {cfg.fields.map(f => (
+                            <TableCell key={f} className="text-xs">{row[f] || <span className="text-muted-foreground/50">-</span>}</TableCell>
                           ))}
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
-                <div className="text-sm text-muted-foreground">Showing 5 of {rawData.length} rows</div>
-
+                <div className="text-sm text-muted-foreground">Showing {Math.min(5, rawData.length)} of {rawData.length} rows</div>
                 <div className="flex justify-between pt-4 border-t border-white/10">
                   <Button variant="outline" onClick={() => setStep(2)} className="bg-transparent border-white/10">Back</Button>
                   <Button onClick={handleImport} className="gap-2">
@@ -276,21 +272,26 @@ export default function Import() {
 
             {step === 4 && (
               <div className="py-12 text-center space-y-6">
-                <motion.div 
-                  initial={{ scale: 0 }} 
-                  animate={{ scale: 1 }} 
-                  transition={{ type: "spring", bounce: 0.5 }}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', bounce: 0.5 }}
                   className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(201,168,76,0.2)]"
                 >
                   <CheckCircle2 size={48} className="text-primary" />
                 </motion.div>
                 <div>
                   <h3 className="text-2xl font-bold mb-2">Import Successful</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">Successfully imported {rawData.length} records into the {type} module. The command center has been updated.</p>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Successfully imported {rawData.length} records into the {cfg.label} module.
+                    {type === 'payroll' && ' Net Salary was calculated automatically for each record.'}
+                  </p>
                 </div>
                 <div className="flex justify-center gap-4 pt-4">
-                  <Button variant="outline" onClick={() => { setStep(1); setRawData([]); }} className="bg-transparent border-white/10">Import More</Button>
-                  <Button onClick={() => setLocation(`/${type}`)}>View {type === 'staff' ? 'Directory' : 'Documents'}</Button>
+                  <Button variant="outline" onClick={() => { setStep(1); setRawData([]); setRawHeaders([]); }} className="bg-transparent border-white/10">
+                    Import More
+                  </Button>
+                  <Button onClick={() => setLocation(redirectTarget)}>View {redirectLabel}</Button>
                 </div>
               </div>
             )}

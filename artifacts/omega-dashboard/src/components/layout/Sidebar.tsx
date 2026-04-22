@@ -2,14 +2,9 @@ import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Briefcase,
-  Users,
-  FileText,
-  Upload,
-  Settings,
-  ChevronLeft,
-  ChevronRight
+  LayoutDashboard, Briefcase, Users, FileText,
+  Upload, Settings, ChevronLeft, ChevronRight,
+  Banknote
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -45,6 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Projects', path: '/projects', icon: Briefcase },
     { name: 'Staff', path: '/staff', icon: Users },
+    { name: 'Payroll', path: '/payroll', icon: Banknote },
     { name: 'Documents', path: '/documents', icon: FileText },
     { name: 'Import', path: '/import', icon: Upload },
   ];
@@ -61,7 +57,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             transition={{ delay: 0.1 }}
             className="flex items-center gap-2.5 min-w-0"
           >
@@ -118,11 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
                   className={cn('shrink-0', isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground')}
                 />
                 {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-sm"
-                  >
+                  <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm">
                     {item.name}
                   </motion.span>
                 )}
