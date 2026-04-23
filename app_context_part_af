@@ -1,0 +1,50 @@
+    client: 'Emaar Misr',
+    status: 'Completed',
+    startDate: '2021-02-01',
+    endDate: '2023-10-31',
+    budget: 12500000,
+    spent: 12100000,
+    location: 'Sidi Abdel Rahman, North Coast',
+    description: 'Construction of 18 residential beach villas and 2 F&B hospitality pavilions at Marassi beachfront development. Works included concrete frame construction, full MEP installation, private pools, external hardscape, and beach access infrastructure across two phases.',
+    projectValue: 12500000,
+    consultant: 'Dar Al Handasah (Shair and Partners)',
+    subcontractors: 'NorthBuild Co., CoastalMEP, SunSteel Structures, PoolPro Egypt',
+    completionPercent: 100,
+    riskLevel: 'High',
+    insurancePolicyNumber: 'OTC-POL-2021-005',
+    technicalSpecs: 'Construction of 18 beach villas (280–450m² each) and 2 F&B hospitality pavilions.\n\n• Raft foundation design for sandy coastal soil conditions\n• Reinforced concrete frame C30/35 (coastal exposure class XS3)\n• External rendered masonry with 80mm EPS thermal insulation\n• Carrier Aqualzone central HVAC plant serving 8 villa clusters\n• Full MEP installation per NFPA 101\n• Private pool per villa: gunite shell, Bisazza mosaic finish, heat pump heating',
+    pmNotes: 'Largest project delivered to date. Complex phased programme: Phase 1 (12 villas) and Phase 2 (6 villas + 2 pavilions). Coastal location required enhanced corrosion protection throughout — stainless steel 316L fixings. Red Sea storm event in September 2022 caused 3-week programme delay — mitigated through weekend working.',
+    mepDetails: 'Electrical: Schneider Electric MV/LV distribution network, solar PV ready DC infrastructure, addressable fire detection per NFPA 72.\nPlumbing: PPR hot/cold systems with solar thermal DHW collectors (Apricus, 30-tube per villa), marine-grade fixtures.\nHVAC: Carrier Aqualzone central plant (2×300TR), chilled water distribution, 4-pipe FCUs per room.',
+    civilWorks: 'Raft foundations: 600mm thick reinforced concrete on 150mm blinding.\nRC frame: C30/35 (XS3 exposure), 50mm minimum cover, epoxy-coated rebar in splash zone.\nExternal walls: 200mm dense block, 80mm EPS, 10mm GFRC rendered coat.\nPool construction: Gunite shell (300mm), Bisazza glass mosaic finish, Pentair filtration.',
+    finishingStatus: 'Phase 1 (12 villas): Formally handed over April 15, 2023. Phase 2 (6 villas + 2 pavilions): Handed over October 31, 2023 — zero outstanding items. Full as-built documentation submitted to Emaar FM team.',
+    milestones: [
+      { id: 'mr-m1', title: 'Site Mobilization & Foundation Works', date: '2021-02-01', completed: true },
+      { id: 'mr-m2', title: 'Concrete Frame — Phase 1 Complete', date: '2021-09-01', completed: true },
+      { id: 'mr-m3', title: 'MEP Rough-in & Building Enclosure', date: '2022-04-01', completed: true },
+      { id: 'mr-m4', title: 'Interior Finishing — Phase 1 Villas', date: '2022-11-01', completed: true },
+      { id: 'mr-m5', title: 'Phase 1 Handover (12 Villas)', date: '2023-04-15', completed: true },
+      { id: 'mr-m6', title: 'Phase 2 Complete & Final Handover', date: '2023-10-31', completed: true },
+    ],
+    assignedStaffIds: [],
+    createdAt: '2021-02-01T00:00:00.000Z'
+  }
+];
+
+const STORAGE_KEY = 'omega-tc-v3';
+
+const defaultState: AppState = {
+  projects: SEED_PROJECTS,
+  employees: [],
+  documents: [],
+  payrollRecords: []
+};
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<AppState>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {

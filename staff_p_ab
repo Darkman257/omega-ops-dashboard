@@ -1,0 +1,40 @@
+  passportExpiry: '',
+  insuranceStatus: 'Not Set',
+  basicSalary: 0,
+  siteAllowance: 0
+};
+
+function EmployeeFormFields({ form }: { form: any }) {
+  return (
+    <div className="space-y-4">
+      <FormField control={form.control} name="name" render={({ field }) => (
+        <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+      )} />
+      <div className="grid grid-cols-2 gap-3">
+        <FormField control={form.control} name="role" render={({ field }) => (
+          <FormItem><FormLabel>Role / Title</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="department" render={({ field }) => (
+          <FormItem><FormLabel>Department</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+        )} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <FormField control={form.control} name="email" render={({ field }) => (
+          <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="phone" render={({ field }) => (
+          <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+        )} />
+      </div>
+      <FormField control={form.control} name="status" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Employment Status</FormLabel>
+          <Select onValueChange={field.onChange} value={field.value}>
+            <FormControl><SelectTrigger className="bg-white/5 border-white/10"><SelectValue /></SelectTrigger></FormControl>
+            <SelectContent>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>

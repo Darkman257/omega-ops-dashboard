@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "AkaINRJoGVGY-WfPZ-8PJ"
+uri = "file://all_code.txt"
+type = "text"
+title = "Omega Dashboard — Full Source Export (10 key files)"

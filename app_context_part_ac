@@ -1,0 +1,50 @@
+  updateEmployee: (id: string, e: Partial<Employee>) => void;
+  deleteEmployee: (id: string) => void;
+
+  addDocument: (d: Omit<DocumentType, 'id' | 'createdAt'>) => void;
+  updateDocument: (id: string, d: Partial<DocumentType>) => void;
+  deleteDocument: (id: string) => void;
+
+  addPayrollRecord: (r: Omit<PayrollRecord, 'id' | 'createdAt'>) => void;
+  updatePayrollRecord: (id: string, r: Partial<PayrollRecord>) => void;
+  deletePayrollRecord: (id: string) => void;
+
+  importData: (type: 'staff' | 'documents' | 'payroll', data: any[]) => void;
+}
+
+const SEED_PROJECTS: Project[] = [
+  {
+    id: 'seed-fs-nile',
+    name: 'Four Seasons Nile Plaza',
+    client: 'Four Seasons Hotels & Resorts',
+    status: 'Completed',
+    startDate: '2018-03-01',
+    endDate: '2019-06-30',
+    budget: 4500000,
+    spent: 4320000,
+    location: 'Garden City, Cairo',
+    description: 'Full commercial kitchen renovation and MEP systems upgrade across floors B1 and GF of the Nile Plaza hotel. Scope included stainless steel AISI 304 partitions, dedicated meat preparation area, and complete replacement of aging building services.',
+    projectValue: 4500000,
+    consultant: 'AECOM Middle East',
+    subcontractors: 'ElectroPower Egypt, CoolTech MEP, SteelFab Cairo',
+    completionPercent: 100,
+    riskLevel: 'Medium',
+    insurancePolicyNumber: 'OTC-POL-2018-001',
+    technicalSpecs: 'Full commercial kitchen renovation across floors B1 and GF.\n\n• Stainless steel AISI 304 wall partitions and ceiling cladding\n• Dedicated NSF-compliant meat preparation area with COSHH-safe tiled drainage\n• MEP systems upgrade: 3-phase 400A electrical panels, chilled water pipework DN150\n• Type-1 kitchen hood exhaust system with Ansul fire suppression\n• Grease interceptors and commercial waste drainage per local authority requirements\n• All equipment supplied by Four Seasons approved vendors',
+    pmNotes: 'Project delivered 6 weeks ahead of schedule. Client requested scope extension in April 2018 for additional cold-room installation — handled via variation order VO-001. Final commissioning included 72-hour witnessed load test for all MEP systems. No LTIs recorded.',
+    mepDetails: 'Electrical: New 400A 3-phase distribution board, full LED panel retrofit, emergency lighting per NFPA 101 throughout B1 & GF.\n\nPlumbing: Full copper pipework replacement (BS EN 1254), thermostatic mixing valves, commercial hot water cylinders (300L×2), dedicated grease interceptors (3000L capacity).\n\nHVAC: Kitchen hood extraction at 8,000 CFM with compensating makeup air units, split AC system 5TR for dry storage, walk-in cooler refrigeration (-2°C) and freezer (-18°C).',
+    civilWorks: 'Demolition of existing kitchen fit-out across floors B1 and GF.\nStructural slab core-drilling (engineer-supervised) for new drainage runs.\nBlock wall construction for meat prep isolation room (200mm dense block).\nAnti-slip quarry tile flooring throughout (slip resistance R11).\nCementitious waterproofing membrane beneath all tile areas.\nFire-rated boarding (60-min) to kitchen extraction ductwork.',
+    finishingStatus: 'All works completed and handed over June 2019. Four Seasons QA sign-off obtained June 28, 2019. Defects liability period of 12 months cleared in full — December 2019. As-built documentation submitted to client.',
+    milestones: [
+      { id: 'fs-m1', title: 'Project Kickoff & Mobilization', date: '2018-03-01', completed: true },
+      { id: 'fs-m2', title: 'Site Preparation & Demolition', date: '2018-04-15', completed: true },
+      { id: 'fs-m3', title: 'MEP Rough-in & Structural Works', date: '2018-07-01', completed: true },
+      { id: 'fs-m4', title: 'Stainless Steel Partitions & Cladding', date: '2018-10-01', completed: true },
+      { id: 'fs-m5', title: 'Kitchen Equipment Installation', date: '2019-02-01', completed: true },
+      { id: 'fs-m6', title: 'Commissioning, Testing & Handover', date: '2019-06-30', completed: true },
+    ],
+    assignedStaffIds: [],
+    createdAt: '2018-03-01T00:00:00.000Z'
+  },
+  {
+    id: 'seed-mivida',

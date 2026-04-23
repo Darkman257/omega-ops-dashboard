@@ -1,0 +1,18 @@
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteEmployee(emp.id)}
+                        data-testid={`button-delete-employee-${emp.id}`}
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </motion.tr>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,40 @@
+  const form = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeSchema), defaultValues });
+
+  const onSubmit = (values: EmployeeFormValues) => {
+    addEmployee({ ...values, passportExpiry: values.passportExpiry || '' });
+    onOpenChange(false);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] bg-card border-white/10 text-foreground p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10">
+          <DialogTitle className="text-lg font-semibold">Add New Employee</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[72vh]">
+          <div className="px-6 py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <EmployeeFormFields form={form} />
+                <div className="pt-4">
+                  <Button type="submit" className="w-full" data-testid="button-add-employee">Add Employee</Button>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditEmployeeModal({ employee, onClose }: { employee: Employee; onClose: () => void }) {
+  const { updateEmployee } = useAppContext();
+  const form = useForm<EmployeeFormValues>({
+    resolver: zodResolver(employeeSchema),
+    defaultValues: {
+      name: employee.name,
+      role: employee.role,
+      department: employee.department,
+      phone: employee.phone,

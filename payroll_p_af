@@ -1,0 +1,40 @@
+    updatePayrollRecord(record.id, { ...values, netSalary: Math.max(0, net), role: values.role || '', department: values.department || '', siteName: values.siteName || '', notes: values.notes || '' });
+    onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-[500px] bg-card border-white/10 text-foreground p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10">
+          <DialogTitle>Edit Payroll — {record.employeeName}</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[75vh]">
+          <div className="px-6 py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <PayrollFormFields form={form} />
+                <div className="pt-4">
+                  <Button type="submit" className="w-full" data-testid="button-save-payroll">Save Changes</Button>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function Payroll() {
+  const { payrollRecords, deletePayrollRecord, siteFilter } = useAppContext();
+  const [, navigate] = useLocation();
+  const [search, setSearch] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [editRecord, setEditRecord] = useState<PayrollRecord | null>(null);
+
+  const filtered = payrollRecords.filter(r => {
+    const matchesSearch = !search ||
+      r.employeeName.toLowerCase().includes(search.toLowerCase()) ||
+      r.department.toLowerCase().includes(search.toLowerCase()) ||

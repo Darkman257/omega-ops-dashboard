@@ -1,0 +1,40 @@
+  const [addOpen, setAddOpen] = useState(false);
+  const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+
+  const filtered = employees.filter(e =>
+    e.name.toLowerCase().includes(search.toLowerCase()) ||
+    e.department.toLowerCase().includes(search.toLowerCase()) ||
+    e.role.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const getInsuranceColor = (status: string) => {
+    if (status === 'Valid') return 'bg-green-500/20 text-green-400 border-green-500/30';
+    if (status === 'Expired') return 'bg-red-500/20 text-red-400 border-red-500/30';
+    return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Staff Directory</h1>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search staff..." className="pl-9 bg-white/5 border-white/10 text-sm h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <Button className="h-9" onClick={() => setAddOpen(true)} data-testid="button-open-add-employee">
+            <Plus size={16} className="mr-2" /> Add Employee
+          </Button>
+        </div>
+      </div>
+
+      <AddEmployeeModal open={addOpen} onOpenChange={setAddOpen} />
+      {editEmployee && <EditEmployeeModal employee={editEmployee} onClose={() => setEditEmployee(null)} />}
+
+      {employees.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6"><Users size={32} className="text-primary" /></div>
+          <h2 className="text-2xl font-bold tracking-tight mb-2">No data available</h2>
+          <p className="text-muted-foreground mb-6 max-w-[400px]">No staff records found. Add employees manually or upload a spreadsheet to populate this module.</p>
+          <Button onClick={() => setAddOpen(true)}><Plus size={16} className="mr-2" /> Add Employee</Button>
+        </div>

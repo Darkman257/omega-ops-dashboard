@@ -1,0 +1,40 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useAppContext, Employee } from '@/context/AppContext';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Users, Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import * as z from 'zod';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+const employeeSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  role: z.string().min(1, 'Role is required'),
+  department: z.string().min(1, 'Department is required'),
+  phone: z.string().min(1, 'Phone is required'),
+  email: z.string().email('Invalid email').or(z.literal('')),
+  status: z.enum(['Active', 'Inactive']),
+  passportExpiry: z.string().optional(),
+  insuranceStatus: z.enum(['Valid', 'Expired', 'Not Set']),
+  basicSalary: z.coerce.number().min(0),
+  siteAllowance: z.coerce.number().min(0)
+});
+
+type EmployeeFormValues = z.infer<typeof employeeSchema>;
+
+const defaultValues: EmployeeFormValues = {
+  name: '',
+  role: '',
+  department: '',
+  phone: '',
+  email: '',
+  status: 'Active',

@@ -1,0 +1,50 @@
+          ...defaultState,
+          ...parsed,
+          payrollRecords: parsed.payrollRecords ?? []
+        };
+      } catch {
+        // fall through
+      }
+    }
+    return defaultState;
+  });
+
+  const [siteFilter, setSiteFilter] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [state]);
+
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+  const now = () => new Date().toISOString();
+
+  const addProject = (p: Omit<Project, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, projects: [{ ...p, id: generateId(), createdAt: now() }, ...prev.projects] }));
+
+  const updateProject = (id: string, updates: Partial<Project>) =>
+    setState(prev => ({ ...prev, projects: prev.projects.map(p => p.id === id ? { ...p, ...updates } : p) }));
+
+  const deleteProject = (id: string) =>
+    setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
+
+  const addEmployee = (e: Omit<Employee, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, employees: [{ ...e, id: generateId(), createdAt: now() }, ...prev.employees] }));
+
+  const updateEmployee = (id: string, updates: Partial<Employee>) =>
+    setState(prev => ({ ...prev, employees: prev.employees.map(e => e.id === id ? { ...e, ...updates } : e) }));
+
+  const deleteEmployee = (id: string) =>
+    setState(prev => ({ ...prev, employees: prev.employees.filter(e => e.id !== id) }));
+
+  const addDocument = (d: Omit<DocumentType, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, documents: [{ ...d, id: generateId(), createdAt: now() }, ...prev.documents] }));
+
+  const updateDocument = (id: string, updates: Partial<DocumentType>) =>
+    setState(prev => ({ ...prev, documents: prev.documents.map(d => d.id === id ? { ...d, ...updates } : d) }));
+
+  const deleteDocument = (id: string) =>
+    setState(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }));
+
+  const addPayrollRecord = (r: Omit<PayrollRecord, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, payrollRecords: [{ ...r, id: generateId(), createdAt: now() }, ...prev.payrollRecords] }));
+

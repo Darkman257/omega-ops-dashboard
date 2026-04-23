@@ -1,0 +1,40 @@
+  basicSalary: 0, siteAllowance: 0, overtimePay: 0, deductions: 0,
+  status: 'Pending', notes: ''
+};
+
+const statusColor = (s: string) => {
+  if (s === 'Paid') return 'bg-green-500/20 text-green-400 border-green-500/30';
+  if (s === 'Pending') return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+  return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+};
+
+const fmt = (n: number) => n.toLocaleString('en-EG');
+
+function NetSalaryPreview({ values }: { values: Partial<PayrollFormValues> }) {
+  const net = (Number(values.basicSalary) || 0)
+    + (Number(values.siteAllowance) || 0)
+    + (Number(values.overtimePay) || 0)
+    - (Number(values.deductions) || 0);
+  return (
+    <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-center justify-between">
+      <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Net Salary (Calculated)</span>
+      <span className="text-lg font-bold text-primary">EGP {fmt(Math.max(0, net))}</span>
+    </div>
+  );
+}
+
+function PayrollFormFields({ form }: { form: any }) {
+  const iClass = "bg-white/5 border-white/10 text-sm";
+  const values = form.watch();
+  const { projects } = useAppContext();
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <FormField control={form.control} name="employeeName" render={({ field }) => (
+          <FormItem><FormLabel>Employee Name</FormLabel><FormControl><Input {...field} className={iClass} placeholder="Full name" /></FormControl><FormMessage /></FormItem>
+        )} />
+        <FormField control={form.control} name="role" render={({ field }) => (
+          <FormItem><FormLabel>Role / Title</FormLabel><FormControl><Input {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+        )} />
+      </div>

@@ -1,0 +1,50 @@
+cat artifacts/omega-dashboard/src/context/AppContext.tsx
+  wc -l artifacts/omega-dashboard/src/context/AppContext.tsx artifacts/omega-dashboard/src/pages/ProjectDetail.tsx artifacts/omega-dashboard/src/lib/utils.ts
+    import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+
+export interface Milestone {
+  id: string;
+  title: string;
+  date: string;
+  completed: boolean;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  client: string;
+  status: 'Planning' | 'In Progress' | 'On Hold' | 'Completed';
+  startDate: string;
+  endDate: string;
+  budget: number;
+  spent: number;
+  location: string;
+  description: string;
+  projectValue: number;
+  consultant: string;
+  subcontractors: string;
+  completionPercent: number;
+  technicalSpecs: string;
+  riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
+  insurancePolicyNumber: string;
+  pmNotes: string;
+  mepDetails: string;
+  civilWorks: string;
+  finishingStatus: string;
+  milestones: Milestone[];
+  assignedStaffIds: string[];
+  createdAt: string;
+}
+
+export interface Employee {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  phone: string;
+  email: string;
+  status: 'Active' | 'Inactive';
+  passportExpiry: string;
+  insuranceStatus: 'Valid' | 'Expired' | 'Not Set';
+  basicSalary: number;
+  siteAllowance: number;

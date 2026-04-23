@@ -1,0 +1,40 @@
+                    <div className="text-xs text-muted-foreground">{emp.phone}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <Badge variant="outline" className={`text-[10px] px-2 ${getInsuranceColor(emp.insuranceStatus || 'Not Set')}`}>
+                        {emp.insuranceStatus || 'Not Set'}
+                      </Badge>
+                      {emp.passportExpiry && (
+                        <div className="text-[10px] text-muted-foreground">ID exp: {emp.passportExpiry}</div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {(emp.basicSalary || 0) > 0 ? (
+                      <div>
+                        <div className="text-sm font-medium">{emp.basicSalary?.toLocaleString()} EGP</div>
+                        {(emp.siteAllowance || 0) > 0 && (
+                          <div className="text-xs text-muted-foreground">+{emp.siteAllowance?.toLocaleString()} allowance</div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground/40 text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={emp.status === 'Active' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-gray-500/20 text-gray-400 border-gray-500/30'}>
+                      {emp.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                        onClick={() => setEditEmployee(emp)}
+                        data-testid={`button-edit-employee-${emp.id}`}
+                      >
+                        <Pencil size={13} />
+                      </Button>
+                      <Button

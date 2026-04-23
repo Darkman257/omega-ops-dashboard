@@ -121,7 +121,7 @@ function AddEmployeeModal({ open, onOpenChange }: { open: boolean; onOpenChange:
   const form = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeSchema), defaultValues });
 
   const onSubmit = (values: EmployeeFormValues) => {
-    addEmployee({ ...values, passportExpiry: values.passportExpiry || '' });
+    addEmployee({ ...values, passportExpiry: values.passportExpiry || '', currentSite: (values as any).currentSite || '' });
     onOpenChange(false);
     form.reset();
   };
@@ -196,16 +196,18 @@ function EditEmployeeModal({ employee, onClose }: { employee: Employee; onClose:
 }
 
 export default function Staff() {
-  const { employees, deleteEmployee } = useAppContext();
+  const { employees, deleteEmployee, siteFilter } = useAppContext();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
 
-  const filtered = employees.filter(e =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.department.toLowerCase().includes(search.toLowerCase()) ||
-    e.role.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = employees.filter(e => {
+    const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) ||
+      e.department.toLowerCase().includes(search.toLowerCase()) ||
+      e.role.toLowerCase().includes(search.toLowerCase());
+    const matchesSite = !siteFilter || e.currentSite === siteFilter;
+    return matchesSearch && matchesSite;
+  });
 
   const getInsuranceColor = (status: string) => {
     if (status === 'Valid') return 'bg-green-500/20 text-green-400 border-green-500/30';

@@ -1,0 +1,40 @@
+      )} />
+
+      <div className="pt-2 border-t border-white/10">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 font-medium">HR & Compliance</p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="passportExpiry" render={({ field }) => (
+              <FormItem><FormLabel>Passport / ID Expiry</FormLabel><FormControl><Input type="date" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="insuranceStatus" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Insurance Status</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger className="bg-white/5 border-white/10"><SelectValue /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    <SelectItem value="Valid">Valid</SelectItem>
+                    <SelectItem value="Expired">Expired</SelectItem>
+                    <SelectItem value="Not Set">Not Set</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="basicSalary" render={({ field }) => (
+              <FormItem><FormLabel>Basic Salary (EGP)</FormLabel><FormControl><Input type="number" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="siteAllowance" render={({ field }) => (
+              <FormItem><FormLabel>Site Allowance (EGP)</FormLabel><FormControl><Input type="number" {...field} className="bg-white/5 border-white/10" /></FormControl><FormMessage /></FormItem>
+            )} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddEmployeeModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { addEmployee } = useAppContext();

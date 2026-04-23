@@ -1,0 +1,40 @@
+            <FormItem><FormLabel>Basic Salary</FormLabel><FormControl><Input type="number" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="siteAllowance" render={({ field }) => (
+            <FormItem><FormLabel>Site Allowance</FormLabel><FormControl><Input type="number" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+          )} />
+        </div>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <FormField control={form.control} name="overtimePay" render={({ field }) => (
+            <FormItem><FormLabel>Overtime Pay</FormLabel><FormControl><Input type="number" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="deductions" render={({ field }) => (
+            <FormItem><FormLabel>Deductions</FormLabel><FormControl><Input type="number" {...field} className={iClass} /></FormControl><FormMessage /></FormItem>
+          )} />
+        </div>
+      </div>
+
+      <NetSalaryPreview values={values} />
+
+      <FormField control={form.control} name="notes" render={({ field }) => (
+        <FormItem><FormLabel>Notes</FormLabel><FormControl><Input {...field} className={iClass} placeholder="Optional notes" /></FormControl><FormMessage /></FormItem>
+      )} />
+    </div>
+  );
+}
+
+function AddModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { addPayrollRecord } = useAppContext();
+  const form = useForm<PayrollFormValues>({ resolver: zodResolver(payrollSchema), defaultValues: emptyDefaults });
+
+  const onSubmit = (values: PayrollFormValues) => {
+    const net = values.basicSalary + values.siteAllowance + values.overtimePay - values.deductions;
+    addPayrollRecord({ ...values, netSalary: Math.max(0, net), role: values.role || '', department: values.department || '', siteName: values.siteName || '', notes: values.notes || '' });
+    onOpenChange(false);
+    form.reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] bg-card border-white/10 text-foreground p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10">

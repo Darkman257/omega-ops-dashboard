@@ -1,0 +1,50 @@
+  currentSite: string;
+  createdAt: string;
+}
+
+export interface DocumentType {
+  id: string;
+  name: string;
+  type: 'Contract' | 'Permit' | 'License' | 'Other';
+  expiryDate: string;
+  issuedDate: string;
+  projectId?: string;
+  notes: string;
+  departmentOwner: string;
+  lastRenewed: string;
+  createdAt: string;
+}
+
+export interface PayrollRecord {
+  id: string;
+  employeeName: string;
+  role: string;
+  department: string;
+  siteName: string;
+  month: string;
+  basicSalary: number;
+  siteAllowance: number;
+  overtimePay: number;
+  deductions: number;
+  netSalary: number;
+  status: 'Paid' | 'Pending' | 'On Hold';
+  notes: string;
+  createdAt: string;
+}
+
+interface AppState {
+  projects: Project[];
+  employees: Employee[];
+  documents: DocumentType[];
+  payrollRecords: PayrollRecord[];
+}
+
+interface AppContextType extends AppState {
+  siteFilter: string;
+  setSiteFilter: (f: string) => void;
+
+  addProject: (p: Omit<Project, 'id' | 'createdAt'>) => void;
+  updateProject: (id: string, p: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+
+  addEmployee: (e: Omit<Employee, 'id' | 'createdAt'>) => void;

@@ -1,0 +1,40 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useAppContext, PayrollRecord } from '@/context/AppContext';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useLocation } from 'wouter';
+import * as z from 'zod';
+import {
+  Banknote, Plus, Search, Pencil, Trash2,
+  Upload, TrendingUp, Users, CheckCircle2, Clock
+} from 'lucide-react';
+
+const payrollSchema = z.object({
+  employeeName: z.string().min(1, 'Name is required'),
+  role: z.string().optional(),
+  department: z.string().optional(),
+  siteName: z.string().optional(),
+  month: z.string().min(1, 'Month is required'),
+  basicSalary: z.coerce.number().min(0),
+  siteAllowance: z.coerce.number().min(0),
+  overtimePay: z.coerce.number().min(0),
+  deductions: z.coerce.number().min(0),
+  status: z.enum(['Paid', 'Pending', 'On Hold']),
+  notes: z.string().optional(),
+});
+
+type PayrollFormValues = z.infer<typeof payrollSchema>;
+
+const emptyDefaults: PayrollFormValues = {
+  employeeName: '', role: '', department: '', siteName: '',
+  month: new Date().toISOString().substring(0, 7),

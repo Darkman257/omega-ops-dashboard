@@ -1,0 +1,40 @@
+      email: employee.email,
+      status: employee.status,
+      passportExpiry: employee.passportExpiry || '',
+      insuranceStatus: employee.insuranceStatus || 'Not Set',
+      basicSalary: employee.basicSalary || 0,
+      siteAllowance: employee.siteAllowance || 0
+    }
+  });
+
+  const onSubmit = (values: EmployeeFormValues) => {
+    updateEmployee(employee.id, { ...values, passportExpiry: values.passportExpiry || '' });
+    onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-[500px] bg-card border-white/10 text-foreground p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10">
+          <DialogTitle className="text-lg font-semibold">Edit Employee — {employee.name}</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[72vh]">
+          <div className="px-6 py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <EmployeeFormFields form={form} />
+                <div className="pt-4">
+                  <Button type="submit" className="w-full" data-testid="button-save-employee">Save Changes</Button>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function Staff() {
+  const { employees, deleteEmployee } = useAppContext();
+  const [search, setSearch] = useState('');

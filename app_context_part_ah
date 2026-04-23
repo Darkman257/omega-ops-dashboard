@@ -1,0 +1,50 @@
+  const updatePayrollRecord = (id: string, updates: Partial<PayrollRecord>) =>
+    setState(prev => ({ ...prev, payrollRecords: prev.payrollRecords.map(r => r.id === id ? { ...r, ...updates } : r) }));
+
+  const deletePayrollRecord = (id: string) =>
+    setState(prev => ({ ...prev, payrollRecords: prev.payrollRecords.filter(r => r.id !== id) }));
+
+  const importData = (type: 'staff' | 'documents' | 'payroll', data: any[]) => {
+    if (type === 'staff') {
+      const items = data.map(item => ({
+        passportExpiry: '', insuranceStatus: 'Not Set' as const,
+        basicSalary: 0, siteAllowance: 0, currentSite: '',
+        ...item, id: generateId(), createdAt: now()
+      })) as Employee[];
+      setState(prev => ({ ...prev, employees: [...items, ...prev.employees] }));
+    } else if (type === 'documents') {
+      const items = data.map(item => ({
+        departmentOwner: '', lastRenewed: '', notes: '',
+        ...item, id: generateId(), createdAt: now()
+      })) as DocumentType[];
+      setState(prev => ({ ...prev, documents: [...items, ...prev.documents] }));
+    } else if (type === 'payroll') {
+      const items = data.map(item => {
+        const basic = Number(item.basicSalary || item.basic_salary || 0);
+        const allowance = Number(item.siteAllowance || item.site_allowance || item.allowance || 0);
+        const overtime = Number(item.overtimePay || item.overtime || 0);
+        const deductions = Number(item.deductions || 0);
+        return {
+          employeeName: item.employeeName || item.employee_name || item.name || '',
+          role: item.role || '',
+          department: item.department || '',
+          siteName: item.siteName || item.site_name || item.site || '',
+          month: item.month || '',
+          basicSalary: basic,
+          siteAllowance: allowance,
+          overtimePay: overtime,
+          deductions,
+          netSalary: basic + allowance + overtime - deductions,
+          status: (item.status as any) || 'Pending',
+          notes: item.notes || '',
+          id: generateId(),
+          createdAt: now()
+        } as PayrollRecord;
+      });
+      setState(prev => ({ ...prev, payrollRecords: [...items, ...prev.payrollRecords] }));
+    }
+  };
+
+  return (
+    <AppContext.Provider value={{
+      ...state,

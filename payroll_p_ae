@@ -1,0 +1,40 @@
+          <DialogTitle>Add Payroll Record</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[75vh]">
+          <div className="px-6 py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
+                <PayrollFormFields form={form} />
+                <div className="pt-4">
+                  <Button type="submit" className="w-full" data-testid="button-add-payroll">Add Record</Button>
+                </div>
+              </form>
+            </Form>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditModal({ record, onClose }: { record: PayrollRecord; onClose: () => void }) {
+  const { updatePayrollRecord } = useAppContext();
+  const form = useForm<PayrollFormValues>({
+    resolver: zodResolver(payrollSchema),
+    defaultValues: {
+      employeeName: record.employeeName,
+      role: record.role || '',
+      department: record.department || '',
+      siteName: record.siteName || '',
+      month: record.month,
+      basicSalary: record.basicSalary,
+      siteAllowance: record.siteAllowance,
+      overtimePay: record.overtimePay,
+      deductions: record.deductions,
+      status: record.status,
+      notes: record.notes || ''
+    }
+  });
+
+  const onSubmit = (values: PayrollFormValues) => {
+    const net = values.basicSalary + values.siteAllowance + values.overtimePay - values.deductions;

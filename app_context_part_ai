@@ -1,0 +1,17 @@
+      siteFilter, setSiteFilter,
+      addProject, updateProject, deleteProject,
+      addEmployee, updateEmployee, deleteEmployee,
+      addDocument, updateDocument, deleteDocument,
+      addPayrollRecord, updatePayrollRecord, deletePayrollRecord,
+      importData
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useAppContext = () => {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('useAppContext must be used within AppProvider');
+  return ctx;
+};

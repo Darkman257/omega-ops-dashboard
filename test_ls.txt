@@ -1,0 +1,13 @@
+all_code.txt
+artifacts
+attached_assets
+lib
+node_modules
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+replit.md
+scripts
+test_ls.txt
+tsconfig.base.json
+tsconfig.json
