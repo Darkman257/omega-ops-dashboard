@@ -51,16 +51,16 @@ function autoMap(headers: string[], type: ImportType): Record<string, string> {
       else if (l.includes('issue') || l.includes('start') || l.includes('created')) matched = 'issuedDate';
       else if (l.includes('expir') || l.includes('end') || l.includes('valid') || l.includes('due')) matched = 'expiryDate';
     } else if (type === 'payroll') {
-      if (l.includes('emp') || l.includes('name') || l === 'الاسم' || l.includes('worker')) matched = 'employeeName';
-      else if (l.includes('role') || l.includes('title') || l.includes('position')) matched = 'role';
-      else if (l.includes('dept') || l.includes('department') || l === 'القسم') matched = 'department';
-      else if (l.includes('site') || l.includes('project') || l.includes('location')) matched = 'siteName';
-      else if (l.includes('month') || l.includes('period') || l.includes('date')) matched = 'month';
-      else if (l === 'basic' || l.includes('basic_') || l.includes('base')) matched = 'basicSalary';
-      else if (l.includes('allow') || l.includes('site_allow')) matched = 'siteAllowance';
-      else if (l.includes('over') || l.includes('extra')) matched = 'overtimePay';
-      else if (l.includes('deduct') || l.includes('absent')) matched = 'deductions';
-      else if (l.includes('status') || l.includes('paid')) matched = 'status';
+      if (l.includes('emp') || l.includes('name') || l === 'الاسم' || l === 'اسم الموظف' || l === 'الموظف' || l.includes('worker')) matched = 'employeeName';
+      else if (l.includes('role') || l.includes('title') || l.includes('position') || l === 'الوظيفة' || l === 'المسمى الوظيفي' || l === 'المسمى') matched = 'role';
+      else if (l.includes('dept') || l.includes('department') || l === 'القسم' || l === 'الإدارة' || l === 'قسم') matched = 'department';
+      else if (l.includes('site') || l.includes('project') || l.includes('location') || l === 'الموقع' || l === 'المشروع' || l === 'موقع') matched = 'siteName';
+      else if (l.includes('month') || l.includes('period') || l === 'الشهر' || l === 'شهر' || l === 'تاريخ') matched = 'month';
+      else if (l === 'basic' || l.includes('basic') || l.includes('base') || l === 'الراتب الأساسي' || l === 'الراتب' || l === 'مرتب أساسي' || l === 'راتب' || l === 'salary') matched = 'basicSalary';
+      else if (l.includes('allow') || l === 'بدل الموقع' || l === 'بدل موقع' || l === 'بدل') matched = 'siteAllowance';
+      else if (l.includes('over') || l.includes('extra') || l === 'إضافي' || l === 'عمل إضافي' || l === 'أوفر تايم' || l === 'ساعات إضافية' || l === 'ot') matched = 'overtimePay';
+      else if (l.includes('deduct') || l.includes('absent') || l === 'خصومات' || l === 'خصم' || l === 'الخصومات' || l === 'الخصم') matched = 'deductions';
+      else if (l.includes('status') || l.includes('paid') || l === 'الحالة' || l === 'حالة الدفع') matched = 'status';
     }
     if (matched && TYPE_CONFIG[type].fields.includes(matched)) {
       map[i] = matched;

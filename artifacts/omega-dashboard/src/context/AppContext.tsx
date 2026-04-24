@@ -80,11 +80,26 @@ export interface PayrollRecord {
   createdAt: string;
 }
 
+export interface Vehicle {
+  id: string;
+  carName: string;
+  plateNumber: string;
+  driver: string;
+  fuelCardBalance: number;
+  lastService: string;
+  maintenanceCost: number;
+  status: 'Active' | 'In Service' | 'Out of Service';
+  notes: string;
+  createdAt: string;
+}
+
 interface AppState {
   projects: Project[];
   employees: Employee[];
   documents: DocumentType[];
   payrollRecords: PayrollRecord[];
+  vehicles: Vehicle[];
+  totalLiquidity: number;
 }
 
 interface AppContextType extends AppState {
@@ -106,6 +121,12 @@ interface AppContextType extends AppState {
   addPayrollRecord: (r: Omit<PayrollRecord, 'id' | 'createdAt'>) => void;
   updatePayrollRecord: (id: string, r: Partial<PayrollRecord>) => void;
   deletePayrollRecord: (id: string) => void;
+
+  addVehicle: (v: Omit<Vehicle, 'id' | 'createdAt'>) => void;
+  updateVehicle: (id: string, v: Partial<Vehicle>) => void;
+  deleteVehicle: (id: string) => void;
+
+  setTotalLiquidity: (amount: number) => void;
 
   importData: (type: 'staff' | 'documents' | 'payroll', data: any[]) => void;
 }
@@ -284,7 +305,9 @@ const defaultState: AppState = {
   projects: SEED_PROJECTS,
   employees: [],
   documents: [],
-  payrollRecords: []
+  payrollRecords: [],
+  vehicles: [],
+  totalLiquidity: 0
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -296,7 +319,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return {
       ...defaultState,
       ...initialState,
-      payrollRecords: initialState.payrollRecords ?? []
+      payrollRecords: initialState.payrollRecords ?? [],
+      vehicles: initialState.vehicles ?? [],
+      totalLiquidity: initialState.totalLiquidity ?? 0
     };
   });
 
@@ -345,6 +370,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const deletePayrollRecord = (id: string) =>
     setState(prev => ({ ...prev, payrollRecords: prev.payrollRecords.filter(r => r.id !== id) }));
 
+  const addVehicle = (v: Omit<Vehicle, 'id' | 'createdAt'>) =>
+    setState(prev => ({ ...prev, vehicles: [{ ...v, id: generateId(), createdAt: now() }, ...prev.vehicles] }));
+
+  const updateVehicle = (id: string, updates: Partial<Vehicle>) =>
+    setState(prev => ({ ...prev, vehicles: prev.vehicles.map(v => v.id === id ? { ...v, ...updates } : v) }));
+
+  const deleteVehicle = (id: string) =>
+    setState(prev => ({ ...prev, vehicles: prev.vehicles.filter(v => v.id !== id) }));
+
+  const setTotalLiquidity = (amount: number) =>
+    setState(prev => ({ ...prev, totalLiquidity: amount }));
+
   const importData = (type: 'staff' | 'documents' | 'payroll', data: any[]) => {
     if (type === 'staff') {
       const items = data.map(item => ({
@@ -360,24 +397,57 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       })) as DocumentType[];
       setState(prev => ({ ...prev, documents: [...items, ...prev.documents] }));
     } else if (type === 'payroll') {
+      const pick = (item: any, ...keys: string[]) => {
+        for (const k of keys) {
+          const v = item[k] ?? item[k.toLowerCase()] ?? item[k.toUpperCase()];
+          if (v !== undefined && v !== '') return v;
+        }
+        return undefined;
+      };
       const items = data.map(item => {
-        const basic = Number(item.basicSalary || item.basic_salary || 0);
-        const allowance = Number(item.siteAllowance || item.site_allowance || item.allowance || 0);
-        const overtime = Number(item.overtimePay || item.overtime || 0);
-        const deductions = Number(item.deductions || 0);
+        const basic = Number(
+          pick(item,
+            'basicSalary','basic_salary','basic','الراتب الأساسي','الراتب','مرتب أساسي',
+            'الأجر الأساسي','أجر أساسي','راتب','Salary','salary'
+          ) ?? 0
+        );
+        const allowance = Number(
+          pick(item,
+            'siteAllowance','site_allowance','allowance','بدل الموقع','بدل موقع','بدل',
+            'Site Allowance','site allowance'
+          ) ?? 0
+        );
+        const overtime = Number(
+          pick(item,
+            'overtimePay','overtime','overtime_pay','إضافي','عمل إضافي','أوفر تايم',
+            'ساعات إضافية','Overtime','OT'
+          ) ?? 0
+        );
+        const deductions = Number(
+          pick(item,
+            'deductions','deduction','خصومات','خصم','الخصومات','الخصم',
+            'Deductions','deduct'
+          ) ?? 0
+        );
+        const net = basic + allowance + overtime - deductions;
         return {
-          employeeName: item.employeeName || item.employee_name || item.name || '',
-          role: item.role || '',
-          department: item.department || '',
-          siteName: item.siteName || item.site_name || item.site || '',
-          month: item.month || '',
+          employeeName: String(
+            pick(item,
+              'employeeName','employee_name','name','الاسم','اسم الموظف','الموظف',
+              'Employee Name','Employee','EmployeeName'
+            ) ?? ''
+          ),
+          role: String(pick(item,'role','الوظيفة','المسمى الوظيفي','المسمى','وظيفة','Role','title') ?? ''),
+          department: String(pick(item,'department','القسم','الإدارة','قسم','Department','dept') ?? ''),
+          siteName: String(pick(item,'siteName','site_name','site','الموقع','المشروع','موقع','Site','Project') ?? ''),
+          month: String(pick(item,'month','الشهر','تاريخ','شهر','Month','period') ?? ''),
           basicSalary: basic,
           siteAllowance: allowance,
           overtimePay: overtime,
           deductions,
-          netSalary: basic + allowance + overtime - deductions,
-          status: (item.status as any) || 'Pending',
-          notes: item.notes || '',
+          netSalary: Math.max(0, net),
+          status: (pick(item,'status','الحالة','حالة الدفع','Status') as any) ?? 'Pending',
+          notes: String(pick(item,'notes','ملاحظات','Notes') ?? ''),
           id: generateId(),
           createdAt: now()
         } as PayrollRecord;
@@ -394,6 +464,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addEmployee, updateEmployee, deleteEmployee,
       addDocument, updateDocument, deleteDocument,
       addPayrollRecord, updatePayrollRecord, deletePayrollRecord,
+      addVehicle, updateVehicle, deleteVehicle,
+      setTotalLiquidity,
       importData
     }}>
       {children}

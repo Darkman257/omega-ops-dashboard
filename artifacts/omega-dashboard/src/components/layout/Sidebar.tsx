@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Briefcase, Users, FileText,
   Upload, Settings, ChevronLeft, ChevronRight,
-  Banknote
+  Banknote, Car
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -41,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
     { name: 'Projects', path: '/projects', icon: Briefcase },
     { name: 'Staff', path: '/staff', icon: Users },
     { name: 'Payroll', path: '/payroll', icon: Banknote },
+    { name: 'Fleet', path: '/fleet', icon: Car },
     { name: 'Documents', path: '/documents', icon: FileText },
     { name: 'Import', path: '/import', icon: Upload },
   ];
