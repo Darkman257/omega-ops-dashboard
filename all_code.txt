@@ -1,3 +1,20 @@
+wc -l all_code.txt
+wc -l all_code.txt
+grep -n "AppProvider" all_code.txt
+sed -n '150,250p' all_code.txt
+sed -n '250,500p' all_code.txt
+grep -n "localStorage" all_code.txt
+sed -n '100,160p' all_code.txt
+sed -n '150,250p' all_code.txt
+grep -A 100 "export const AppProvider" all_code.txt
+grep "SEED_EMPLOYEES" all_code.txt
+ls -F
+sed -n '150,250p' all_code.txt
+sed -n '150,200p' all_code.txt
+sed -n '150,250p' all_code.txt
+sed -n '150,300p' all_code.txt
+sed -n '80,160p' all_code.txt
+sed -n '150,250p' all_code.txt
 === all_code.txt — Omega Technical Contracting Dashboard ===
 Generated: Thu Apr 23 05:50:26 AM UTC 2026
 Zero TypeScript errors. All 3 workflows RUNNING.
