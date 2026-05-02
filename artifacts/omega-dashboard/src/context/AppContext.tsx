@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export interface Milestone {
   id: string;
@@ -93,18 +94,32 @@ export interface Vehicle {
   createdAt: string;
 }
 
+export interface HousingUnit {
+  id: string;
+  unitNumber: string;
+  location: string;
+  capacity: number;
+  occupants: number;
+  status: string;
+  notes: string;
+  createdAt: string;
+}
+
 interface AppState {
   projects: Project[];
   employees: Employee[];
   documents: DocumentType[];
   payrollRecords: PayrollRecord[];
   vehicles: Vehicle[];
+  housingUnits: HousingUnit[];
   totalLiquidity: number;
+  loading: boolean;
 }
 
 interface AppContextType extends AppState {
   siteFilter: string;
   setSiteFilter: (f: string) => void;
+  refresh: () => Promise<void>;
 
   addProject: (p: Omit<Project, 'id' | 'createdAt'>) => void;
   updateProject: (id: string, p: Partial<Project>) => void;
@@ -127,332 +142,481 @@ interface AppContextType extends AppState {
   deleteVehicle: (id: string) => void;
 
   setTotalLiquidity: (amount: number) => void;
-
   importData: (type: 'staff' | 'documents' | 'payroll', data: any[]) => void;
 }
 
-const SEED_PROJECTS: Project[] = [
-  {
-    id: 'seed-fs-nile',
-    name: 'Four Seasons Nile Plaza',
-    client: 'Four Seasons Hotels & Resorts',
-    status: 'Completed',
-    startDate: '2018-03-01',
-    endDate: '2019-06-30',
-    budget: 4500000,
-    spent: 4320000,
-    location: 'Garden City, Cairo',
-    description: 'Full commercial kitchen renovation and MEP systems upgrade across floors B1 and GF of the Nile Plaza hotel. Scope included stainless steel AISI 304 partitions, dedicated meat preparation area, and complete replacement of aging building services.',
-    projectValue: 4500000,
-    consultant: 'AECOM Middle East',
-    subcontractors: 'ElectroPower Egypt, CoolTech MEP, SteelFab Cairo',
-    completionPercent: 100,
-    riskLevel: 'Medium',
-    insurancePolicyNumber: 'OTC-POL-2018-001',
-    technicalSpecs: 'Full commercial kitchen renovation across floors B1 and GF.\n\n• Stainless steel AISI 304 wall partitions and ceiling cladding\n• Dedicated NSF-compliant meat preparation area with COSHH-safe tiled drainage\n• MEP systems upgrade: 3-phase 400A electrical panels, chilled water pipework DN150\n• Type-1 kitchen hood exhaust system with Ansul fire suppression\n• Grease interceptors and commercial waste drainage per local authority requirements\n• All equipment supplied by Four Seasons approved vendors',
-    pmNotes: 'Project delivered 6 weeks ahead of schedule. Client requested scope extension in April 2018 for additional cold-room installation — handled via variation order VO-001. Final commissioning included 72-hour witnessed load test for all MEP systems. No LTIs recorded.',
-    mepDetails: 'Electrical: New 400A 3-phase distribution board, full LED panel retrofit, emergency lighting per NFPA 101 throughout B1 & GF.\n\nPlumbing: Full copper pipework replacement (BS EN 1254), thermostatic mixing valves, commercial hot water cylinders (300L×2), dedicated grease interceptors (3000L capacity).\n\nHVAC: Kitchen hood extraction at 8,000 CFM with compensating makeup air units, split AC system 5TR for dry storage, walk-in cooler refrigeration (-2°C) and freezer (-18°C).',
-    civilWorks: 'Demolition of existing kitchen fit-out across floors B1 and GF.\nStructural slab core-drilling (engineer-supervised) for new drainage runs.\nBlock wall construction for meat prep isolation room (200mm dense block).\nAnti-slip quarry tile flooring throughout (slip resistance R11).\nCementitious waterproofing membrane beneath all tile areas.\nFire-rated boarding (60-min) to kitchen extraction ductwork.',
-    finishingStatus: 'All works completed and handed over June 2019. Four Seasons QA sign-off obtained June 28, 2019. Defects liability period of 12 months cleared in full — December 2019. As-built documentation submitted to client.',
-    milestones: [
-      { id: 'fs-m1', title: 'Project Kickoff & Mobilization', date: '2018-03-01', completed: true },
-      { id: 'fs-m2', title: 'Site Preparation & Demolition', date: '2018-04-15', completed: true },
-      { id: 'fs-m3', title: 'MEP Rough-in & Structural Works', date: '2018-07-01', completed: true },
-      { id: 'fs-m4', title: 'Stainless Steel Partitions & Cladding', date: '2018-10-01', completed: true },
-      { id: 'fs-m5', title: 'Kitchen Equipment Installation', date: '2019-02-01', completed: true },
-      { id: 'fs-m6', title: 'Commissioning, Testing & Handover', date: '2019-06-30', completed: true },
-    ],
-    assignedStaffIds: [],
-    createdAt: '2018-03-01T00:00:00.000Z'
-  },
-  {
-    id: 'seed-mivida',
-    name: 'Mivida – Emaar',
-    client: 'Emaar Properties',
-    status: 'Completed',
-    startDate: '2019-01-15',
-    endDate: '2021-08-31',
-    budget: 8200000,
-    spent: 7950000,
-    location: '5th Settlement, New Cairo',
-    description: 'Infrastructure development and high-end landscape construction across 45 hectares of the Mivida residential compound. Works included primary road network, underground utilities coordination, boulevard hardscape, ornamental planting, and automated irrigation systems.',
-    projectValue: 8200000,
-    consultant: 'WSP Global',
-    subcontractors: 'GreenLand Landscaping, StructurePro Egypt, NilePipe Utilities',
-    completionPercent: 100,
-    riskLevel: 'Medium',
-    insurancePolicyNumber: 'OTC-POL-2019-002',
-    technicalSpecs: 'Infrastructure and landscape works across 45 hectares of Mivida residential compound.\n\n• Primary road network: asphalt, 7m carriageway, 120,000 m³ cut & fill earthworks\n• Underground utilities: 11kV HV cable (2.8km), fiber optic ducting, potable water DN200\n• Irrigation mains DN100, storm drainage 600mm HDPE\n• Landscape: ornamental planting (40+ species), automated drip irrigation with SCADA\n• Feature water bodies, fountain features with LED illumination\n• Boulevard hardscape: granite sett paving, feature pergolas',
-    pmNotes: 'Phased delivery approach agreed with Emaar Misr at outset. Phase 1 (primary roads and utilities) completed ahead of schedule. Landscape works delayed by 6 weeks due to plant import restrictions — mitigated by sourcing locally. WSP issued 3 RFIs resolved without variation. All as-built drawings in BIM format submitted.',
-    mepDetails: 'HV Cable: 11kV XLPE armoured cable installation (2.8km total run), 4 MV/LV distribution substations (500 kVA each).\n\nStreet Lighting: LED luminaires (4,000K, IP66), PV-assisted controllers on spine boulevard, 240 poles total.\n\nTelecom: HDPE duct network for VDSL/fiber, pre-installed for compound ISP handover.\n\nIrrigation: Pump stations (×3) with Delta SCADA control, weather-compensation sensors, fertigation capability for planting beds.',
-    civilWorks: 'Earthworks: 120,000 m³ balanced cut & fill per geotechnical report.\nSub-base G1 crushed stone, 300mm, compacted to 98% MDD.\nAsphalt base course 80mm + wearing course 50mm (Superpave design).\nConcrete kerbing, precast block paving in pedestrian zones.\nRetaining walls (block & mortar) up to 3m height with drainage aggregate backfill.\nBox culverts for wadi crossings (2 locations).',
-    finishingStatus: 'Infrastructure formally accepted by Emaar Misr, August 31, 2021. Landscape final inspection passed with minor punch items cleared within 14 days. Full as-built BIM model (Revit MEP + Civil 3D) submitted. Maintenance manual and O&M documentation delivered.',
-    milestones: [
-      { id: 'mv-m1', title: 'Survey, Design Approval & Mobilization', date: '2019-01-15', completed: true },
-      { id: 'mv-m2', title: 'Site Clearance & Bulk Earthworks', date: '2019-05-01', completed: true },
-      { id: 'mv-m3', title: 'Underground Utilities Installation', date: '2019-11-01', completed: true },
-      { id: 'mv-m4', title: 'Road Base, Subgrade & Paving', date: '2020-06-01', completed: true },
-      { id: 'mv-m5', title: 'Landscape Infrastructure & Planting', date: '2021-01-15', completed: true },
-      { id: 'mv-m6', title: 'Final Finishing, Punch List & Handover', date: '2021-08-31', completed: true },
-    ],
-    assignedStaffIds: [],
-    createdAt: '2019-01-15T00:00:00.000Z'
-  },
-  {
-    id: 'seed-katameya',
-    name: 'Katameya Heights',
-    client: 'Palm Hills Developments',
-    status: 'Completed',
-    startDate: '2020-05-01',
-    endDate: '2022-04-30',
-    budget: 3100000,
-    spent: 3050000,
-    location: 'New Cairo',
-    description: 'Complete renovation of 2 luxury villas (Villa 12 & Villa 17) at Katameya Heights. Each villa 650m² over 3 floors. Scope included structural repairs, full MEP replacement, KNX smart home integration, premium Italian marble finishes, custom hardwood millwork, and pool refurbishment.',
-    projectValue: 3100000,
-    consultant: 'DCI Engineers',
-    subcontractors: 'LuxFinish Interiors, ModernMEP, KNX Smart Systems, Marble Palace',
-    completionPercent: 100,
-    riskLevel: 'Low',
-    insurancePolicyNumber: 'OTC-POL-2020-003',
-    technicalSpecs: 'Complete renovation of 2 luxury villas — Villa 12 & Villa 17 — each 650m² GBA over 3 floors.\n\n• Structural crack repair (epoxy injection, DCI Engineers-supervised)\n• New waterproofing on flat roofs and terraces (Sika Sarnafil membrane)\n• Full MEP replacement: PEX plumbing, KNX smart electrical, Daikin VRV IV HVAC\n• Interior: Italian Calacatta marble flooring, custom hardwood (European oak) millwork\n• Smart home: KNX bus system with Busch-Jaeger panels (lighting, climate, blinds, security)\n• Pool refurbishment: mosaic tile lining, Pentair filtration upgrade, LED underwater lighting',
-    pmNotes: 'Two villas delivered sequentially per client request. Villa 12 handed over December 2021, Villa 17 April 2022. Client requested upgrade to Bulthaup kitchen systems mid-project (VO-001, €42k addition). KNX commissioning required 3-week specialist subcontractor presence. Zero defects raised at final inspection for Villa 12; 7 minor items for Villa 17.',
-    mepDetails: 'Electrical: KNX bus system (Busch-Jaeger IQ panels), LED recessed lighting with dimming, 32kW SunPower solar PV per villa.\nPlumbing: Rehau PEX-A pipework, Grohe thermostatic shower systems, concealed Geberit cisterns, underfloor heating (ground floor).\nHVAC: Daikin VRV IV outdoor units, concealed cassette indoor units, Zehnder HRV fresh-air system.',
-    civilWorks: 'Structural assessment report by DCI Engineers — 14 wall/column crack repairs via epoxy injection.\nNew Sika Sarnafil waterproofing membrane: flat roofs, terraces, bathroom wet areas.\nPool refurbishment: existing gunite shell retained, new mosaic tile (Bisazza), Pentair filtration, LED underwater lighting.\nExternal rendered masonry touch-up, new aluminium double-glazed windows.',
-    finishingStatus: 'Villa 12: Handed over Q4 2021. Owner snag list of 0 items. Villa 17: Handed over Q1 2022, 7 minor items cleared within 5 days. 12-month warranty period completed for both villas.',
-    milestones: [
-      { id: 'kt-m1', title: 'Design, Structural Assessment & Approvals', date: '2020-05-01', completed: true },
-      { id: 'kt-m2', title: 'Demolition, Structural Repairs & Waterproofing', date: '2020-08-01', completed: true },
-      { id: 'kt-m3', title: 'Full MEP Rough-in (Both Villas)', date: '2021-03-01', completed: true },
-      { id: 'kt-m4', title: 'Interior Fit-Out — Villa 12 Complete', date: '2021-09-01', completed: true },
-      { id: 'kt-m5', title: 'Interior Fit-Out — Villa 17 Complete', date: '2022-01-15', completed: true },
-      { id: 'kt-m6', title: 'Pool, Landscaping & Final Handover', date: '2022-04-30', completed: true },
-    ],
-    assignedStaffIds: [],
-    createdAt: '2020-05-01T00:00:00.000Z'
-  },
-  {
-    id: 'seed-sodic',
-    name: 'SODIC Allegria',
-    client: 'SODIC',
-    status: 'Completed',
-    startDate: '2022-06-01',
-    endDate: '2024-07-31',
-    budget: 5800000,
-    spent: 5650000,
-    location: '6th of October City',
-    description: 'MEP installations and high-end interior finishing works for the Allegria compound amenities including full clubhouse fit-out (1,200m²), sports facility upgrades, and common-area refurbishment across 8 residential clusters. BMS integration delivered under SODIC smart community initiative.',
-    projectValue: 5800000,
-    consultant: 'Ramboll Group',
-    subcontractors: 'Delta Controls Egypt, KnaufBuild, ACS Engineering, LuxStone Interiors',
-    completionPercent: 100,
-    riskLevel: 'Medium',
-    insurancePolicyNumber: 'OTC-POL-2022-004',
-    technicalSpecs: 'MEP installation and interior finishing for Allegria compound amenities.\n\n• Clubhouse fit-out (1,200m²): Knauf drywall partitions, Armstrong suspended ceilings\n• Sports facilities: resurfaced tennis/padel courts, gym fit-out with rubber flooring\n• EV charging stations: 24 points (Type 2, 22kW AC)\n• BMS integration: Delta Controls, covering HVAC, lighting, access control, CCTV\n• Pool area: non-slip Porcelain R12 tiles, stainless steel handrails',
-    pmNotes: 'Project phased across 3 clusters per quarter to minimise resident disruption. SODIC community relations team embedded with our PM. 2 scope additions approved: EV chargers (VO-001, $320k) and clubhouse AV system (VO-002, $85k). Final SODIC QA inspection passed first attempt.',
-    mepDetails: 'Electrical: LV distribution upgrade, Schneider Electric DB boards throughout. LED lighting to IES RP-28. EV charging (24×22kW AC, ABB Terra units). Emergency lighting and addressable fire alarm per NFPA 72.\nPlumbing: Full replacement of communal hot water circuits (central heat pump system). New irrigation mains DN80.\nHVAC: Daikin VRF systems for clubhouse (60HP), MVHR units for basement car park.',
-    civilWorks: 'Clubhouse: Internal partition system (Knauf CW/UW 100mm drywall). Suspended ceilings: Armstrong Ultima Tegular.\nExternal hardscape: Granite sett paving, timber composite decking.\nSports courts: Macadam resurfacing with acrylic colour coat, court lighting upgrade to 500 lux LED.\nGeneral: Full redecoration of 8 cluster lobbies.',
-    finishingStatus: 'Clubhouse interiors and MEP completed July 2024. BMS commissioning and SCADA handover to SODIC FM team complete. SODIC QA approval received July 29, 2024. Currently in 12-month defects liability period (ends July 2025).',
-    milestones: [
-      { id: 'sd-m1', title: 'Project Mobilization & Design Finalization', date: '2022-06-01', completed: true },
-      { id: 'sd-m2', title: 'MEP Design Approval & Procurement', date: '2022-10-01', completed: true },
-      { id: 'sd-m3', title: 'Electrical & Plumbing Rough-in Works', date: '2023-03-01', completed: true },
-      { id: 'sd-m4', title: 'HVAC & BMS Installation', date: '2023-09-01', completed: true },
-      { id: 'sd-m5', title: 'Interior Finishing & EV Charger Installation', date: '2024-02-01', completed: true },
-      { id: 'sd-m6', title: 'BMS Commissioning, Testing & Handover', date: '2024-07-31', completed: true },
-    ],
-    assignedStaffIds: [],
-    createdAt: '2022-06-01T00:00:00.000Z'
-  },
-  {
-    id: 'seed-marassi',
-    name: 'Marassi – North Coast',
-    client: 'Emaar Misr',
-    status: 'Completed',
-    startDate: '2021-02-01',
-    endDate: '2023-10-31',
-    budget: 12500000,
-    spent: 12100000,
-    location: 'Sidi Abdel Rahman, North Coast',
-    description: 'Construction of 18 residential beach villas and 2 F&B hospitality pavilions at Marassi beachfront development. Works included concrete frame construction, full MEP installation, private pools, external hardscape, and beach access infrastructure across two phases.',
-    projectValue: 12500000,
-    consultant: 'Dar Al Handasah (Shair and Partners)',
-    subcontractors: 'NorthBuild Co., CoastalMEP, SunSteel Structures, PoolPro Egypt',
-    completionPercent: 100,
-    riskLevel: 'High',
-    insurancePolicyNumber: 'OTC-POL-2021-005',
-    technicalSpecs: 'Construction of 18 beach villas (280–450m² each) and 2 F&B hospitality pavilions.\n\n• Raft foundation design for sandy coastal soil conditions\n• Reinforced concrete frame C30/35 (coastal exposure class XS3)\n• External rendered masonry with 80mm EPS thermal insulation\n• Carrier Aqualzone central HVAC plant serving 8 villa clusters\n• Full MEP installation per NFPA 101\n• Private pool per villa: gunite shell, Bisazza mosaic finish, heat pump heating',
-    pmNotes: 'Largest project delivered to date. Complex phased programme: Phase 1 (12 villas) and Phase 2 (6 villas + 2 pavilions). Coastal location required enhanced corrosion protection throughout — stainless steel 316L fixings. Red Sea storm event in September 2022 caused 3-week programme delay — mitigated through weekend working.',
-    mepDetails: 'Electrical: Schneider Electric MV/LV distribution network, solar PV ready DC infrastructure, addressable fire detection per NFPA 72.\nPlumbing: PPR hot/cold systems with solar thermal DHW collectors (Apricus, 30-tube per villa), marine-grade fixtures.\nHVAC: Carrier Aqualzone central plant (2×300TR), chilled water distribution, 4-pipe FCUs per room.',
-    civilWorks: 'Raft foundations: 600mm thick reinforced concrete on 150mm blinding.\nRC frame: C30/35 (XS3 exposure), 50mm minimum cover, epoxy-coated rebar in splash zone.\nExternal walls: 200mm dense block, 80mm EPS, 10mm GFRC rendered coat.\nPool construction: Gunite shell (300mm), Bisazza glass mosaic finish, Pentair filtration.',
-    finishingStatus: 'Phase 1 (12 villas): Formally handed over April 15, 2023. Phase 2 (6 villas + 2 pavilions): Handed over October 31, 2023 — zero outstanding items. Full as-built documentation submitted to Emaar FM team.',
-    milestones: [
-      { id: 'mr-m1', title: 'Site Mobilization & Foundation Works', date: '2021-02-01', completed: true },
-      { id: 'mr-m2', title: 'Concrete Frame — Phase 1 Complete', date: '2021-09-01', completed: true },
-      { id: 'mr-m3', title: 'MEP Rough-in & Building Enclosure', date: '2022-04-01', completed: true },
-      { id: 'mr-m4', title: 'Interior Finishing — Phase 1 Villas', date: '2022-11-01', completed: true },
-      { id: 'mr-m5', title: 'Phase 1 Handover (12 Villas)', date: '2023-04-15', completed: true },
-      { id: 'mr-m6', title: 'Phase 2 Complete & Final Handover', date: '2023-10-31', completed: true },
-    ],
-    assignedStaffIds: [],
-    createdAt: '2021-02-01T00:00:00.000Z'
-  }
-];
+// ─── DB → Frontend mappers ────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'omega-tc-v3';
+const mapProject = (row: any): Project => ({
+  id: String(row.id),
+  name: row.project_name ?? row.name ?? '',
+  client: row.owner_name ?? row.client ?? '',
+  status: row.status ?? 'Planning',
+  startDate: row.start_date ?? row.startDate ?? '',
+  endDate: row.end_date ?? row.endDate ?? '',
+  budget: Number(row.contract_value ?? row.budget ?? 0),
+  spent: Number(row.spent ?? 0),
+  location: row.location ?? '',
+  description: row.description ?? '',
+  projectValue: Number(row.project_value ?? row.contract_value ?? row.budget ?? 0),
+  consultant: row.consultant ?? '',
+  subcontractors: row.subcontractors ?? '',
+  completionPercent: Number(row.completion_rate ?? row.completion_percent ?? row.completionPercent ?? 0),
+  technicalSpecs: row.technical_specs ?? row.technicalSpecs ?? '',
+  riskLevel: row.risk_level ?? row.riskLevel ?? 'Low',
+  insurancePolicyNumber: row.insurance_policy_number ?? row.insurancePolicyNumber ?? '',
+  pmNotes: row.pm_notes ?? row.pmNotes ?? '',
+  mepDetails: row.mep_details ?? row.mepDetails ?? '',
+  civilWorks: row.civil_works ?? row.civilWorks ?? '',
+  finishingStatus: row.finishing_status ?? row.finishingStatus ?? '',
+  milestones: Array.isArray(row.milestones) ? row.milestones : [],
+  assignedStaffIds: Array.isArray(row.assigned_staff_ids) ? row.assigned_staff_ids : [],
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
 
-const defaultState: AppState = {
-  projects: SEED_PROJECTS,
-  employees: [],
-  documents: [],
-  payrollRecords: [],
-  vehicles: [],
-  totalLiquidity: 0
+const unmapProject = (p: Partial<Project> & { id?: string }): any => {
+  const out: any = {};
+  if (p.name !== undefined) out.project_name = p.name;
+  if (p.client !== undefined) out.owner_name = p.client;
+  if (p.budget !== undefined) out.contract_value = p.budget;
+  if (p.completionPercent !== undefined) out.completion_rate = p.completionPercent;
+  if (p.status !== undefined) out.status = p.status;
+  if (p.startDate !== undefined) out.start_date = p.startDate;
+  if (p.endDate !== undefined) out.end_date = p.endDate;
+  if (p.spent !== undefined) out.spent = p.spent;
+  if (p.location !== undefined) out.location = p.location;
+  if (p.description !== undefined) out.description = p.description;
+  if (p.projectValue !== undefined) out.project_value = p.projectValue;
+  if (p.consultant !== undefined) out.consultant = p.consultant;
+  if (p.subcontractors !== undefined) out.subcontractors = p.subcontractors;
+  if (p.technicalSpecs !== undefined) out.technical_specs = p.technicalSpecs;
+  if (p.riskLevel !== undefined) out.risk_level = p.riskLevel;
+  if (p.insurancePolicyNumber !== undefined) out.insurance_policy_number = p.insurancePolicyNumber;
+  if (p.pmNotes !== undefined) out.pm_notes = p.pmNotes;
+  if (p.mepDetails !== undefined) out.mep_details = p.mepDetails;
+  if (p.civilWorks !== undefined) out.civil_works = p.civilWorks;
+  if (p.finishingStatus !== undefined) out.finishing_status = p.finishingStatus;
+  if (p.milestones !== undefined) out.milestones = p.milestones;
+  if (p.assignedStaffIds !== undefined) out.assigned_staff_ids = p.assignedStaffIds;
+  return out;
 };
 
+const mapEmployee = (row: any): Employee => ({
+  id: String(row.id),
+  name: row.full_name ?? row.name ?? '',
+  role: row.job_title ?? row.role ?? '',
+  department: row.department ?? '',
+  phone: row.phone ?? '',
+  email: row.email ?? '',
+  status: (row.status === 'active' || row.status === 'Active') ? 'Active' : 'Inactive',
+  passportExpiry: row.passport_expiry ?? '',
+  insuranceStatus: row.insurance_status ?? 'Not Set',
+  basicSalary: Number(row.basic_salary ?? 0),
+  siteAllowance: Number(row.site_allowance ?? 0),
+  currentSite: row.current_site ?? '',
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
+
+const unmapEmployee = (e: Partial<Employee>): any => {
+  const out: any = {};
+  if (e.name !== undefined) out.full_name = e.name;
+  if (e.role !== undefined) out.job_title = e.role;
+  if (e.department !== undefined) out.department = e.department;
+  if (e.phone !== undefined) out.phone = e.phone;
+  if (e.email !== undefined) out.email = e.email;
+  if (e.status !== undefined) out.status = e.status.toLowerCase();
+  if (e.basicSalary !== undefined) out.basic_salary = e.basicSalary;
+  return out;
+};
+
+const mapVehicle = (row: any): Vehicle => ({
+  id: String(row.id),
+  carName: row.car_name ?? row.carName ?? '',
+  plateNumber: row.plate_number ?? row.plateNumber ?? '',
+  driver: row.driver ?? '',
+  fuelCardBalance: Number(row.fuel_balance ?? row.fuelCardBalance ?? 0),
+  lastService: row.last_service ?? row.lastService ?? '',
+  maintenanceCost: Number(row.maintenance_cost ?? row.maintenanceCost ?? 0),
+  status: row.status ?? 'Active',
+  notes: row.notes ?? '',
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
+
+const unmapVehicle = (v: Partial<Vehicle>): any => {
+  const out: any = {};
+  if (v.carName !== undefined) out.car_name = v.carName;
+  if (v.plateNumber !== undefined) out.plate_number = v.plateNumber;
+  if (v.driver !== undefined) out.driver = v.driver;
+  if (v.fuelCardBalance !== undefined) out.fuel_balance = v.fuelCardBalance;
+  if (v.lastService !== undefined) out.last_service = v.lastService;
+  if (v.maintenanceCost !== undefined) out.maintenance_cost = v.maintenanceCost;
+  if (v.status !== undefined) out.status = v.status;
+  if (v.notes !== undefined) out.notes = v.notes;
+  return out;
+};
+
+const mapPayroll = (row: any): PayrollRecord => ({
+  id: String(row.id),
+  employeeName: row.employee_name ?? row.employeeName ?? '',
+  role: row.role ?? '',
+  department: row.department ?? '',
+  siteName: row.site_name ?? row.siteName ?? '',
+  month: row.month ?? '',
+  basicSalary: Number(row.basic_salary ?? row.basicSalary ?? 0),
+  siteAllowance: Number(row.site_allowance ?? row.siteAllowance ?? 0),
+  overtimePay: Number(row.overtime_pay ?? row.overtimePay ?? 0),
+  deductions: Number(row.deductions ?? 0),
+  netSalary: Number(row.net_salary ?? row.netSalary ?? 0),
+  status: row.status ?? 'Pending',
+  notes: row.notes ?? '',
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
+
+const unmapPayroll = (r: Partial<PayrollRecord>): any => {
+  const out: any = {};
+  if (r.employeeName !== undefined) out.employee_name = r.employeeName;
+  if (r.role !== undefined) out.role = r.role;
+  if (r.department !== undefined) out.department = r.department;
+  if (r.siteName !== undefined) out.site_name = r.siteName;
+  if (r.month !== undefined) out.month = r.month;
+  if (r.basicSalary !== undefined) out.basic_salary = r.basicSalary;
+  if (r.siteAllowance !== undefined) out.site_allowance = r.siteAllowance;
+  if (r.overtimePay !== undefined) out.overtime_pay = r.overtimePay;
+  if (r.deductions !== undefined) out.deductions = r.deductions;
+  if (r.netSalary !== undefined) out.net_salary = r.netSalary;
+  if (r.status !== undefined) out.status = r.status;
+  if (r.notes !== undefined) out.notes = r.notes;
+  return out;
+};
+
+const mapDocument = (row: any): DocumentType => ({
+  id: String(row.id),
+  name: row.name ?? '',
+  type: row.type ?? 'Other',
+  expiryDate: row.expiry_date ?? row.expiryDate ?? '',
+  issuedDate: row.issued_date ?? row.issuedDate ?? '',
+  projectId: row.project_id ?? row.projectId,
+  notes: row.notes ?? '',
+  departmentOwner: row.department_owner ?? row.departmentOwner ?? '',
+  lastRenewed: row.last_renewed ?? row.lastRenewed ?? '',
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
+
+const unmapDocument = (d: Partial<DocumentType>): any => {
+  const out: any = {};
+  if (d.name !== undefined) out.name = d.name;
+  if (d.type !== undefined) out.type = d.type;
+  if (d.expiryDate !== undefined) out.expiry_date = d.expiryDate;
+  if (d.issuedDate !== undefined) out.issued_date = d.issuedDate;
+  if (d.projectId !== undefined) out.project_id = d.projectId;
+  if (d.notes !== undefined) out.notes = d.notes;
+  if (d.departmentOwner !== undefined) out.department_owner = d.departmentOwner;
+  if (d.lastRenewed !== undefined) out.last_renewed = d.lastRenewed;
+  return out;
+};
+
+const mapHousingUnit = (row: any): HousingUnit => ({
+  id: String(row.id),
+  unitNumber: row.unit_number ?? row.unitNumber ?? row.name ?? String(row.id),
+  location: row.location ?? '',
+  capacity: Number(row.capacity ?? 0),
+  occupants: Number(row.occupants ?? row.current_occupants ?? 0),
+  status: row.status ?? 'Available',
+  notes: row.notes ?? '',
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
+
+// ─── Storage key for liquidity (no dedicated Supabase table) ─────────────────
+const LIQUIDITY_KEY = 'omega-liquidity';
+
+// ─── Context ─────────────────────────────────────────────────────────────────
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const initialState = saved ? JSON.parse(saved) : defaultState;
-    return {
-      ...defaultState,
-      ...initialState,
-      payrollRecords: initialState.payrollRecords ?? [],
-      vehicles: initialState.vehicles ?? [],
-      totalLiquidity: initialState.totalLiquidity ?? 0
-    };
+  const [state, setState] = useState<AppState>({
+    projects: [],
+    employees: [],
+    documents: [],
+    payrollRecords: [],
+    vehicles: [],
+    housingUnits: [],
+    totalLiquidity: Number(localStorage.getItem(LIQUIDITY_KEY) ?? 0),
+    loading: true,
   });
-
   const [siteFilter, setSiteFilter] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+  const safeQuery = async (table: string, order?: string) => {
+    try {
+      const q = supabase.from(table).select('*');
+      const res = order ? await q.order(order, { ascending: false }) : await q;
+      if (res.error) {
+        // retry without order if ordering failed
+        if (order && res.error.code === '42703') {
+          const r2 = await supabase.from(table).select('*');
+          if (r2.error) { console.warn(`[${table}]`, r2.error.message); return []; }
+          return r2.data ?? [];
+        }
+        console.warn(`[${table}]`, res.error.message);
+        return [];
+      }
+      return res.data ?? [];
+    } catch (e) {
+      console.warn(`[${table}] unexpected error`, e);
+      return [];
+    }
+  };
 
-  const generateId = () => Math.random().toString(36).substr(2, 9);
-  const now = () => new Date().toISOString();
+  const refresh = async () => {
+    setState(prev => ({ ...prev, loading: true }));
 
-  const addProject = (p: Omit<Project, 'id' | 'createdAt'>) =>
-    setState(prev => ({ ...prev, projects: [{ ...p, id: generateId(), createdAt: now() }, ...prev.projects] }));
+    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData] = await Promise.all([
+      safeQuery('projects', 'created_at'),
+      safeQuery('staff'),
+      safeQuery('vehicles', 'created_at'),
+      safeQuery('payroll_records', 'created_at'),
+      safeQuery('documents', 'created_at'),
+      safeQuery('housing_units'),
+    ]);
 
-  const updateProject = (id: string, updates: Partial<Project>) =>
+    setState(prev => ({
+      ...prev,
+      projects: projectsData.map(mapProject),
+      employees: staffData.map(mapEmployee),
+      vehicles: vehiclesData.map(mapVehicle),
+      payrollRecords: payrollData.map(mapPayroll),
+      documents: docsData.map(mapDocument),
+      housingUnits: housingData.map(mapHousingUnit),
+      loading: false,
+    }));
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  // ─── Projects ─────────────────────────────────────────────────────────────
+
+  const addProject = (p: Omit<Project, 'id' | 'createdAt'>) => {
+    const tempId = crypto.randomUUID();
+    const newItem: Project = { ...p, id: tempId, createdAt: new Date().toISOString() };
+    setState(prev => ({ ...prev, projects: [newItem, ...prev.projects] }));
+    supabase.from('projects').insert([unmapProject(p)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addProject:', error); return; }
+        if (data) setState(prev => ({
+          ...prev,
+          projects: prev.projects.map(x => x.id === tempId ? mapProject(data) : x),
+        }));
+      });
+  };
+
+  const updateProject = (id: string, updates: Partial<Project>) => {
     setState(prev => ({ ...prev, projects: prev.projects.map(p => p.id === id ? { ...p, ...updates } : p) }));
+    supabase.from('projects').update(unmapProject(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updateProject:', error); });
+  };
 
-  const deleteProject = (id: string) =>
+  const deleteProject = (id: string) => {
     setState(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }));
+    supabase.from('projects').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteProject:', error); });
+  };
 
-  const addEmployee = (e: Omit<Employee, 'id' | 'createdAt'>) =>
-    setState(prev => ({ ...prev, employees: [{ ...e, id: generateId(), createdAt: now() }, ...prev.employees] }));
+  // ─── Staff ────────────────────────────────────────────────────────────────
 
-  const updateEmployee = (id: string, updates: Partial<Employee>) =>
+  const addEmployee = (e: Omit<Employee, 'id' | 'createdAt'>) => {
+    const tempId = crypto.randomUUID();
+    const newItem: Employee = { ...e, id: tempId, createdAt: new Date().toISOString() };
+    setState(prev => ({ ...prev, employees: [newItem, ...prev.employees] }));
+    supabase.from('staff').insert([unmapEmployee(e)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addEmployee:', error); return; }
+        if (data) setState(prev => ({
+          ...prev,
+          employees: prev.employees.map(x => x.id === tempId ? mapEmployee(data) : x),
+        }));
+      });
+  };
+
+  const updateEmployee = (id: string, updates: Partial<Employee>) => {
     setState(prev => ({ ...prev, employees: prev.employees.map(e => e.id === id ? { ...e, ...updates } : e) }));
+    supabase.from('staff').update(unmapEmployee(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updateEmployee:', error); });
+  };
 
-  const deleteEmployee = (id: string) =>
+  const deleteEmployee = (id: string) => {
     setState(prev => ({ ...prev, employees: prev.employees.filter(e => e.id !== id) }));
+    supabase.from('staff').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteEmployee:', error); });
+  };
 
-  const addDocument = (d: Omit<DocumentType, 'id' | 'createdAt'>) =>
-    setState(prev => ({ ...prev, documents: [{ ...d, id: generateId(), createdAt: now() }, ...prev.documents] }));
+  // ─── Documents ────────────────────────────────────────────────────────────
 
-  const updateDocument = (id: string, updates: Partial<DocumentType>) =>
+  const addDocument = (d: Omit<DocumentType, 'id' | 'createdAt'>) => {
+    const tempId = crypto.randomUUID();
+    const newItem: DocumentType = { ...d, id: tempId, createdAt: new Date().toISOString() };
+    setState(prev => ({ ...prev, documents: [newItem, ...prev.documents] }));
+    supabase.from('documents').insert([unmapDocument(d)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addDocument:', error); return; }
+        if (data) setState(prev => ({
+          ...prev,
+          documents: prev.documents.map(x => x.id === tempId ? mapDocument(data) : x),
+        }));
+      });
+  };
+
+  const updateDocument = (id: string, updates: Partial<DocumentType>) => {
     setState(prev => ({ ...prev, documents: prev.documents.map(d => d.id === id ? { ...d, ...updates } : d) }));
+    supabase.from('documents').update(unmapDocument(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updateDocument:', error); });
+  };
 
-  const deleteDocument = (id: string) =>
+  const deleteDocument = (id: string) => {
     setState(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }));
+    supabase.from('documents').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteDocument:', error); });
+  };
 
-  const addPayrollRecord = (r: Omit<PayrollRecord, 'id' | 'createdAt'>) =>
-    setState(prev => ({ ...prev, payrollRecords: [{ ...r, id: generateId(), createdAt: now() }, ...prev.payrollRecords] }));
+  // ─── Payroll ──────────────────────────────────────────────────────────────
 
-  const updatePayrollRecord = (id: string, updates: Partial<PayrollRecord>) =>
+  const addPayrollRecord = (r: Omit<PayrollRecord, 'id' | 'createdAt'>) => {
+    const tempId = crypto.randomUUID();
+    const newItem: PayrollRecord = { ...r, id: tempId, createdAt: new Date().toISOString() };
+    setState(prev => ({ ...prev, payrollRecords: [newItem, ...prev.payrollRecords] }));
+    supabase.from('payroll_records').insert([unmapPayroll(r)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addPayrollRecord:', error); return; }
+        if (data) setState(prev => ({
+          ...prev,
+          payrollRecords: prev.payrollRecords.map(x => x.id === tempId ? mapPayroll(data) : x),
+        }));
+      });
+  };
+
+  const updatePayrollRecord = (id: string, updates: Partial<PayrollRecord>) => {
     setState(prev => ({ ...prev, payrollRecords: prev.payrollRecords.map(r => r.id === id ? { ...r, ...updates } : r) }));
+    supabase.from('payroll_records').update(unmapPayroll(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updatePayrollRecord:', error); });
+  };
 
-  const deletePayrollRecord = (id: string) =>
+  const deletePayrollRecord = (id: string) => {
     setState(prev => ({ ...prev, payrollRecords: prev.payrollRecords.filter(r => r.id !== id) }));
+    supabase.from('payroll_records').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deletePayrollRecord:', error); });
+  };
 
-  const addVehicle = (v: Omit<Vehicle, 'id' | 'createdAt'>) =>
-    setState(prev => ({ ...prev, vehicles: [{ ...v, id: generateId(), createdAt: now() }, ...prev.vehicles] }));
+  // ─── Vehicles ─────────────────────────────────────────────────────────────
 
-  const updateVehicle = (id: string, updates: Partial<Vehicle>) =>
+  const addVehicle = (v: Omit<Vehicle, 'id' | 'createdAt'>) => {
+    const tempId = crypto.randomUUID();
+    const newItem: Vehicle = { ...v, id: tempId, createdAt: new Date().toISOString() };
+    setState(prev => ({ ...prev, vehicles: [newItem, ...prev.vehicles] }));
+    supabase.from('vehicles').insert([unmapVehicle(v)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addVehicle:', error); return; }
+        if (data) setState(prev => ({
+          ...prev,
+          vehicles: prev.vehicles.map(x => x.id === tempId ? mapVehicle(data) : x),
+        }));
+      });
+  };
+
+  const updateVehicle = (id: string, updates: Partial<Vehicle>) => {
     setState(prev => ({ ...prev, vehicles: prev.vehicles.map(v => v.id === id ? { ...v, ...updates } : v) }));
+    supabase.from('vehicles').update(unmapVehicle(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updateVehicle:', error); });
+  };
 
-  const deleteVehicle = (id: string) =>
+  const deleteVehicle = (id: string) => {
     setState(prev => ({ ...prev, vehicles: prev.vehicles.filter(v => v.id !== id) }));
+    supabase.from('vehicles').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteVehicle:', error); });
+  };
 
-  const setTotalLiquidity = (amount: number) =>
+  // ─── Liquidity ────────────────────────────────────────────────────────────
+
+  const setTotalLiquidity = (amount: number) => {
+    localStorage.setItem(LIQUIDITY_KEY, String(amount));
     setState(prev => ({ ...prev, totalLiquidity: amount }));
+  };
+
+  // ─── Bulk Import ──────────────────────────────────────────────────────────
 
   const importData = (type: 'staff' | 'documents' | 'payroll', data: any[]) => {
+    const pick = (item: any, ...keys: string[]) => {
+      for (const k of keys) {
+        const v = item[k] ?? item[k.toLowerCase()] ?? item[k.toUpperCase()];
+        if (v !== undefined && v !== '') return v;
+      }
+      return undefined;
+    };
+
     if (type === 'staff') {
-      const items = data.map(item => ({
-        passportExpiry: '', insuranceStatus: 'Not Set' as const,
-        basicSalary: 0, siteAllowance: 0, currentSite: '',
-        ...item, id: generateId(), createdAt: now()
-      })) as Employee[];
-      setState(prev => ({ ...prev, employees: [...items, ...prev.employees] }));
+      const rows = data.map(item => ({
+        full_name: String(pick(item, 'name', 'employeeName', 'employee_name', 'الاسم', 'اسم الموظف', 'full_name') ?? ''),
+        job_title: String(pick(item, 'role', 'job_title', 'position', 'الوظيفة', 'المسمى', 'title') ?? ''),
+        department: String(pick(item, 'department', 'dept', 'القسم') ?? ''),
+        phone: String(pick(item, 'phone', 'mobile', 'الهاتف', 'tel') ?? ''),
+        email: String(pick(item, 'email', 'البريد الإلكتروني') ?? ''),
+        basic_salary: Number(pick(item, 'basicSalary', 'basic_salary', 'salary', 'الراتب الأساسي', 'الراتب') ?? 0),
+        status: 'active',
+      })).filter(r => r.full_name);
+
+      supabase.from('staff').insert(rows).select()
+        .then(({ data: inserted, error }) => {
+          if (error) { console.error('import staff:', error); return; }
+          if (inserted) setState(prev => ({
+            ...prev,
+            employees: [...(inserted).map(mapEmployee), ...prev.employees],
+          }));
+        });
     } else if (type === 'documents') {
-      const items = data.map(item => ({
-        departmentOwner: '', lastRenewed: '', notes: '',
-        ...item, id: generateId(), createdAt: now()
-      })) as DocumentType[];
-      setState(prev => ({ ...prev, documents: [...items, ...prev.documents] }));
+      const rows = data.map(item => ({
+        name: String(pick(item, 'name', 'title', 'الاسم', 'doc') ?? ''),
+        type: String(pick(item, 'type', 'category', 'نوع') ?? 'Other'),
+        expiry_date: String(pick(item, 'expiryDate', 'expiry_date', 'expiry', 'end', 'تاريخ الانتهاء') ?? ''),
+        issued_date: String(pick(item, 'issuedDate', 'issued_date', 'issue', 'start', 'تاريخ الإصدار') ?? ''),
+        notes: String(pick(item, 'notes', 'ملاحظات') ?? ''),
+        department_owner: String(pick(item, 'departmentOwner', 'department', 'القسم') ?? ''),
+      })).filter(r => r.name);
+
+      supabase.from('documents').insert(rows).select()
+        .then(({ data: inserted, error }) => {
+          if (error) { console.error('import documents:', error); return; }
+          if (inserted) setState(prev => ({
+            ...prev,
+            documents: [...(inserted).map(mapDocument), ...prev.documents],
+          }));
+        });
     } else if (type === 'payroll') {
-      const pick = (item: any, ...keys: string[]) => {
-        for (const k of keys) {
-          const v = item[k] ?? item[k.toLowerCase()] ?? item[k.toUpperCase()];
-          if (v !== undefined && v !== '') return v;
-        }
-        return undefined;
-      };
-      const items = data.map(item => {
-        const basic = Number(
-          pick(item,
-            'basicSalary','basic_salary','basic','الراتب الأساسي','الراتب','مرتب أساسي',
-            'الأجر الأساسي','أجر أساسي','راتب','Salary','salary'
-          ) ?? 0
-        );
-        const allowance = Number(
-          pick(item,
-            'siteAllowance','site_allowance','allowance','بدل الموقع','بدل موقع','بدل',
-            'Site Allowance','site allowance'
-          ) ?? 0
-        );
-        const overtime = Number(
-          pick(item,
-            'overtimePay','overtime','overtime_pay','إضافي','عمل إضافي','أوفر تايم',
-            'ساعات إضافية','Overtime','OT'
-          ) ?? 0
-        );
-        const deductions = Number(
-          pick(item,
-            'deductions','deduction','خصومات','خصم','الخصومات','الخصم',
-            'Deductions','deduct'
-          ) ?? 0
-        );
-        const net = basic + allowance + overtime - deductions;
+      const rows = data.map(item => {
+        const basic = Number(pick(item, 'basicSalary', 'basic_salary', 'basic', 'الراتب الأساسي', 'الراتب', 'salary') ?? 0);
+        const allowance = Number(pick(item, 'siteAllowance', 'site_allowance', 'بدل الموقع', 'بدل') ?? 0);
+        const overtime = Number(pick(item, 'overtimePay', 'overtime', 'overtime_pay', 'إضافي', 'عمل إضافي', 'OT') ?? 0);
+        const deductions = Number(pick(item, 'deductions', 'deduction', 'خصومات', 'خصم') ?? 0);
         return {
-          employeeName: String(
-            pick(item,
-              'employeeName','employee_name','name','الاسم','اسم الموظف','الموظف',
-              'Employee Name','Employee','EmployeeName'
-            ) ?? ''
-          ),
-          role: String(pick(item,'role','الوظيفة','المسمى الوظيفي','المسمى','وظيفة','Role','title') ?? ''),
-          department: String(pick(item,'department','القسم','الإدارة','قسم','Department','dept') ?? ''),
-          siteName: String(pick(item,'siteName','site_name','site','الموقع','المشروع','موقع','Site','Project') ?? ''),
-          month: String(pick(item,'month','الشهر','تاريخ','شهر','Month','period') ?? ''),
-          basicSalary: basic,
-          siteAllowance: allowance,
-          overtimePay: overtime,
+          employee_name: String(pick(item, 'employeeName', 'employee_name', 'name', 'الاسم', 'اسم الموظف') ?? ''),
+          role: String(pick(item, 'role', 'الوظيفة', 'المسمى', 'title') ?? ''),
+          department: String(pick(item, 'department', 'القسم') ?? ''),
+          site_name: String(pick(item, 'siteName', 'site_name', 'site', 'الموقع', 'المشروع') ?? ''),
+          month: String(pick(item, 'month', 'الشهر', 'تاريخ') ?? ''),
+          basic_salary: basic,
+          site_allowance: allowance,
+          overtime_pay: overtime,
           deductions,
-          netSalary: Math.max(0, net),
-          status: (pick(item,'status','الحالة','حالة الدفع','Status') as any) ?? 'Pending',
-          notes: String(pick(item,'notes','ملاحظات','Notes') ?? ''),
-          id: generateId(),
-          createdAt: now()
-        } as PayrollRecord;
-      });
-      setState(prev => ({ ...prev, payrollRecords: [...items, ...prev.payrollRecords] }));
+          net_salary: Math.max(0, basic + allowance + overtime - deductions),
+          status: String(pick(item, 'status', 'الحالة') ?? 'Pending'),
+          notes: String(pick(item, 'notes', 'ملاحظات') ?? ''),
+        };
+      }).filter(r => r.employee_name);
+
+      supabase.from('payroll_records').insert(rows).select()
+        .then(({ data: inserted, error }) => {
+          if (error) { console.error('import payroll:', error); return; }
+          if (inserted) setState(prev => ({
+            ...prev,
+            payrollRecords: [...(inserted).map(mapPayroll), ...prev.payrollRecords],
+          }));
+        });
     }
   };
 
@@ -460,13 +624,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     <AppContext.Provider value={{
       ...state,
       siteFilter, setSiteFilter,
+      refresh,
       addProject, updateProject, deleteProject,
       addEmployee, updateEmployee, deleteEmployee,
       addDocument, updateDocument, deleteDocument,
       addPayrollRecord, updatePayrollRecord, deletePayrollRecord,
       addVehicle, updateVehicle, deleteVehicle,
       setTotalLiquidity,
-      importData
+      importData,
     }}>
       {children}
     </AppContext.Provider>

@@ -196,7 +196,7 @@ function EditEmployeeModal({ employee, onClose }: { employee: Employee; onClose:
 }
 
 export default function Staff() {
-  const { employees, deleteEmployee, siteFilter } = useAppContext();
+  const { employees, deleteEmployee, siteFilter, loading } = useAppContext();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);

@@ -7,6 +7,9 @@ import ProjectDetail from "@/pages/ProjectDetail";
 import Staff from "@/pages/Staff";
 import Payroll from "@/pages/Payroll";
 import Fleet from "@/pages/Fleet";
+import Facilities from "@/pages/Facilities";
+import Assets from "@/pages/Assets";
+import Approvals from "@/pages/Approvals";
 import Documents from "@/pages/Documents";
 import Import from "@/pages/Import";
 import NotFound from "@/pages/not-found";
@@ -21,6 +24,9 @@ export function Router() {
         <Route path="/staff" component={Staff} />
         <Route path="/payroll" component={Payroll} />
         <Route path="/fleet" component={Fleet} />
+        <Route path="/facilities" component={Facilities} />
+        <Route path="/assets" component={Assets} />
+        <Route path="/approvals" component={Approvals} />
         <Route path="/documents" component={Documents} />
         <Route path="/import" component={Import} />
         <Route component={NotFound} />
