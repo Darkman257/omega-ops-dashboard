@@ -12,6 +12,8 @@ import Assets from "@/pages/Assets";
 import Approvals from "@/pages/Approvals";
 import Documents from "@/pages/Documents";
 import Import from "@/pages/Import";
+import Settings from "@/pages/Settings";
+import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 
 export function Router() {
@@ -29,6 +31,8 @@ export function Router() {
         <Route path="/approvals" component={Approvals} />
         <Route path="/documents" component={Documents} />
         <Route path="/import" component={Import} />
+        <Route path="/settings" component={Settings} />
+        <Route path="/profile" component={Profile} />
         <Route component={NotFound} />
       </Switch>
     </DashboardLayout>

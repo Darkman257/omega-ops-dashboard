@@ -149,27 +149,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
 
       {/* Footer */}
       <div className="p-3 border-t border-white/10 space-y-1 flex-shrink-0">
-        <div className={cn(
-          'flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-white/5 text-muted-foreground hover:text-foreground',
-          collapsed ? 'justify-center' : ''
-        )}>
-          <Settings size={18} />
-          {!collapsed && <span className="text-sm">Settings</span>}
-        </div>
-        <div className={cn(
-          'flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-white/5',
-          collapsed ? 'justify-center' : ''
-        )}>
-          <Avatar className="h-7 w-7 rounded-md border border-white/10 flex-shrink-0">
-            <AvatarFallback className="bg-primary/20 text-primary text-xs rounded-md font-bold">AD</AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">Admin User</p>
-              <p className="text-[10px] text-muted-foreground truncate">Executive</p>
-            </motion.div>
-          )}
-        </div>
+        <Link href="/settings">
+          <div className={cn(
+            'flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-white/5 text-muted-foreground hover:text-foreground',
+            collapsed ? 'justify-center' : ''
+          )}>
+            <Settings size={18} />
+            {!collapsed && <span className="text-sm">Settings</span>}
+          </div>
+        </Link>
+        <Link href="/profile">
+          <div className={cn(
+            'flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors',
+            collapsed ? 'justify-center' : ''
+          )}>
+            <Avatar className="h-7 w-7 rounded-md border border-white/10 flex-shrink-0">
+              <AvatarFallback className="bg-primary/20 text-primary text-xs rounded-md font-bold">AD</AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">Admin User</p>
+                <p className="text-[10px] text-muted-foreground truncate">Executive</p>
+              </motion.div>
+            )}
+          </div>
+        </Link>
       </div>
     </motion.aside>
   );
