@@ -10,67 +10,115 @@ export interface ProjectFinancials {
   riskLevel: 'SAFE' | 'MEDIUM_RISK' | 'HIGH_RISK';
 }
 
-export interface WorkerRisk {
-  internalCode: string;
-  name: string;
-  lateCount: number;
-  overtimeHours: number;
-  isMissingAttendance: boolean;
-  riskScore: number;
+export interface OwnerModeData {
+  summary: {
+    lostToday: number;
+    workforce: { present: number; late: number; absent: number };
+    activeSites: number;
+    criticalRisks: number;
+  };
+  verdict: {
+    state: 'SAFE' | 'WARNING' | 'BLEEDING';
+    label: string;
+    explanationAr: string;
+  };
+  whyReasons: string[];
+  actionsNow: string[];
+  snapshot: {
+    workforce: { total: number; present: number; late: number; absent: number; missingAttendance: number };
+    payroll: { totalMonth: number; highestCostSite: string; deductions: number; overtime: number };
+    projects: { total: number; highestBurn: string; safeCount: number; warningCount: number; bleedingCount: number };
+  };
+  offenders: {
+    worker: string;
+    site: string;
+    project: string;
+  };
 }
 
-export interface ImpactStats {
-  lostToday: number;
-  systemState: 'SAFE' | 'WARNING' | 'BLEEDING';
-  healthScore: number;
-  recommendations: string[];
-  workerRisks: WorkerRisk[];
-}
-
-export function getImpactData(projects: Project[], payroll: PayrollRecord[], staff: Employee[]): ImpactStats {
+export function calculateOwnerMode(projects: Project[], payroll: PayrollRecord[], staff: Employee[]): OwnerModeData {
   const leaks = detectPayrollLeaks(payroll, staff, projects);
   const financials = projects.map(p => calculateProjectFinancials(p, payroll));
   
-  // Calculate "Lost Today" (Sum of leaks + over-budget daily average)
-  const leakTotal = leaks.reduce((sum, l) => {
-    // Estimate cost if applicable (e.g., zero salary isn't a "loss" but unlinked staff is a risk)
-    return sum + (l.type === 'OVER_BUDGET' ? 1000 : 500); 
-  }, 0);
+  // 1. Summary
+  const lostToday = leaks.reduce((sum, l) => sum + (l.severity === 'CRITICAL' ? 1000 : 500), 0);
+  const activeSites = projects.filter(p => p.status === 'In Progress').length;
+  const criticalRisks = leaks.filter(l => l.severity === 'CRITICAL').length;
+
+  // 2. Verdict
+  const bleedingCount = financials.filter(f => f.riskLevel === 'HIGH_RISK').length;
+  const state: 'SAFE' | 'WARNING' | 'BLEEDING' = bleedingCount > 1 || criticalRisks > 0 ? 'BLEEDING' : bleedingCount > 0 || leaks.length > 0 ? 'WARNING' : 'SAFE';
   
-  const highRiskProjects = financials.filter(f => f.riskLevel === 'HIGH_RISK');
-  const systemState = highRiskProjects.length > 2 || leaks.some(l => l.severity === 'CRITICAL') ? 'BLEEDING' : 
-                      highRiskProjects.length > 0 || leaks.length > 0 ? 'WARNING' : 'SAFE';
+  const verdict = {
+    state,
+    label: state === 'BLEEDING' ? 'SYSTEM BLEEDING' : state === 'WARNING' ? 'SYSTEM WARNING' : 'SYSTEM SAFE',
+    explanationAr: state === 'BLEEDING' ? 'يوجد نزيف مالي واضح وتخطي للميزانيات — تدخل فوري مطلوب' : 
+                   state === 'WARNING' ? 'يوجد مخاطر محتملة وتنبيهات في المرتبات أو المواقع' : 
+                   'النظام مستقر — لا يوجد نزيف مالي واضح اليوم'
+  };
 
-  // Health Score: 100 - (leaks + high risk penalties)
-  const healthScore = Math.max(0, 100 - (leaks.length * 5) - (highRiskProjects.length * 15));
+  // 3. Why Reasons
+  const whyReasons = [];
+  if (criticalRisks > 0) whyReasons.push(`${criticalRisks} Critical payroll integrity leaks`);
+  if (bleedingCount > 0) whyReasons.push(`${bleedingCount} Sites exceeded 85% burn rate`);
+  const otTotal = payroll.reduce((sum, r) => sum + r.overtimePay, 0);
+  if (otTotal > 50000) whyReasons.push("Abnormal overtime spike detected across sites");
+  if (leaks.some(l => l.type === 'UNLINKED_STAFF')) whyReasons.push("Unknown worker IDs found in payroll batch");
+  
+  // 4. Action Now
+  const actionsNow = [];
+  if (state === 'BLEEDING') actionsNow.push("Freeze all non-essential spending for high-burn sites");
+  if (criticalRisks > 0) actionsNow.push("Validate payroll duplicates and unlinked codes");
+  if (financials.some(f => f.payrollBurnRate > 95)) actionsNow.push(`Review overtime for site "${financials.find(f => f.payrollBurnRate > 95)?.projectName}"`);
+  if (actionsNow.length === 0) actionsNow.push("Continue routine monitoring of site attendance");
 
-  // Recommendations
-  const recommendations = [];
-  if (highRiskProjects.length > 0) recommendations.push(`Audit ${highRiskProjects[0].projectName} budget immediately.`);
-  if (leaks.some(l => l.type === 'UNLINKED_STAFF')) recommendations.push("Verify 3 unlinked staff IDs in payroll.");
-  if (healthScore < 80) recommendations.push("Consolidate site workforce to reduce overtime.");
+  // 5. Snapshot
+  const highestBurn = [...financials].sort((a, b) => b.payrollBurnRate - a.payrollBurnRate)[0];
+  const highestCost = [...financials].sort((a, b) => b.totalPayrollCost - a.totalPayrollCost)[0];
 
-  // Worker Risk Analysis
-  const workerRisks: WorkerRisk[] = staff.slice(0, 5).map(s => {
-    const records = payroll.filter(r => r.internalCode === s.internalCode);
-    const ot = records.reduce((sum, r) => sum + (r.overtimePay / 50), 0); // Simulated hours
-    const riskScore = (ot > 40 ? 50 : 0) + (records.length === 0 ? 30 : 0);
-    return {
-      internalCode: s.internalCode,
-      name: s.fullName,
-      lateCount: Math.floor(Math.random() * 5),
-      overtimeHours: ot,
-      isMissingAttendance: records.length === 0,
-      riskScore
-    };
-  }).filter(w => w.riskScore > 0).sort((a, b) => b.riskScore - a.riskScore);
+  const snapshot = {
+    workforce: {
+      total: staff.length,
+      present: Math.floor(staff.length * 0.8), // Simulated
+      late: Math.floor(staff.length * 0.1),
+      absent: Math.floor(staff.length * 0.1),
+      missingAttendance: leaks.filter(l => l.type === 'MISSING_CODE').length
+    },
+    payroll: {
+      totalMonth: payroll.reduce((sum, r) => sum + r.netSalary, 0),
+      highestCostSite: highestCost?.projectName || 'N/A',
+      deductions: payroll.reduce((sum, r) => sum + r.deductions, 0),
+      overtime: otTotal
+    },
+    projects: {
+      total: projects.length,
+      highestBurn: highestBurn?.projectName || 'N/A',
+      safeCount: financials.filter(f => f.riskLevel === 'SAFE').length,
+      warningCount: financials.filter(f => f.riskLevel === 'MEDIUM_RISK').length,
+      bleedingCount
+    }
+  };
+
+  // 6. Offenders
+  const offenderWorker = leaks.find(l => l.severity === 'CRITICAL')?.internalCode || 'N/A';
+  const offenderSite = highestBurn?.payrollBurnRate > 90 ? highestBurn.projectName : 'N/A';
 
   return {
-    lostToday: leakTotal,
-    systemState,
-    healthScore,
-    recommendations: recommendations.length > 0 ? recommendations : ["All operations within normal parameters."],
-    workerRisks
+    summary: {
+      lostToday,
+      workforce: { present: snapshot.workforce.present, late: snapshot.workforce.late, absent: snapshot.workforce.absent },
+      activeSites,
+      criticalRisks
+    },
+    verdict,
+    whyReasons: whyReasons.slice(0, 3),
+    actionsNow: actionsNow.slice(0, 3),
+    snapshot,
+    offenders: {
+      worker: offenderWorker,
+      site: offenderSite,
+      project: offenderSite
+    }
   };
 }
 
