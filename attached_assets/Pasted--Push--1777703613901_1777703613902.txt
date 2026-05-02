@@ -1,0 +1,179 @@
+يا عمدة، تمام. خليني أول حاجة أتأكد إن الكود الحالي على جهازك فيه آخر التحديثات، وبعدين أعمل Push لـ GitHub.
+
+Ran command: `git log --oneline -5 && echo "---" && git status`
+
+الكود نظيف وعلى الـ GitHub بالفعل (`origin/main` = `be773bb`). الـ Push مش محتاج. دلوقتي أعطيك الـ Prompt الشامل لـ Replit:
+
+---
+
+## 📋 Replit Context Prompt — انسخه والصقه مباشرة في Replit
+
+```
+You are continuing development of the Omega Engineering Dashboard.
+
+LIVE REPO: https://github.com/Darkman257/omega-ops-dashboard
+PRODUCTION URL: https://omega-ops-dashboard-omega-dashboard.vercel.app/
+LOGIN: admin@omega.com / omega2026
+SUPABASE PROJECT: https://kbdvcrjifqlunzawkobg.supabase.co
+
+────────────────────────────────────────
+TECH STACK
+────────────────────────────────────────
+- React 18 + TypeScript (Vite)
+- Supabase (PostgreSQL + Realtime)
+- Wouter (routing)
+- Radix UI + shadcn/ui components
+- Framer Motion animations
+- Recharts for charts
+- Zod + React Hook Form
+- Sonner (toast notifications)
+
+────────────────────────────────────────
+CURRENT STATE (as of latest commit: be773bb)
+────────────────────────────────────────
+
+All P0 crashes have been fixed:
+
+1. dashboard_stats is now fetched SEPARATELY with try/catch
+   — it no longer crashes the app if the view fails.
+
+2. Facilities.tsx now reads from 'housing_units' table
+   — the 'facilities' table does NOT exist in Supabase.
+
+3. Projects write mapping is fixed:
+   — frontend 'name' → DB 'project_name'
+   — frontend 'client' → DB 'owner_name'
+   — frontend 'budget' → DB 'contract_value'
+   — frontend 'completionPercent' → DB 'completion_rate'
+
+4. Staff write mapping is fixed:
+   — frontend 'name' → DB 'full_name'
+   — frontend 'role' → DB 'job_title'
+   — removed invalid columns: current_site, site_allowance, passport_expiry
+
+5. Import (Excel upload) mapping is fixed for staff and payroll.
+
+────────────────────────────────────────
+SUPABASE — POPULATED TABLES (real data)
+────────────────────────────────────────
+- vehicles: 56 rows (fully working)
+- projects: 8 rows (fully working)
+- staff: ~14 rows (working, reads full_name/job_title)
+- housing_units: data exists (used by Facilities page)
+- employees_new: 4 rows (ORPHANED — not used by frontend)
+
+────────────────────────────────────────
+SUPABASE — EMPTY TABLES (exist but no data)
+────────────────────────────────────────
+- payroll_records: schema was just migrated to add:
+    basic_salary, daily_rate, days_worked, advances,
+    site_allowance, overtime_pay, deductions,
+    site_name, role, department, type
+- documents, assets, approvals, activity_log, site_logs
+
+────────────────────────────────────────
+KNOWN COLUMN MAPPINGS (frontend ↔ DB)
+────────────────────────────────────────
+projects table:
+  project_name (was: name)
+  owner_name (was: client)
+  contract_value (was: budget)
+  completion_rate (was: completion_percent)
+
+staff table:
+  full_name (was: name)
+  job_title (was: role)
+  basic_salary ✓
+  status (must be lowercase: 'active'/'inactive')
+
+payroll_records table:
+  employee_name, month, net_salary, status, notes,
+  basic_salary, daily_rate, days_worked, advances,
+  site_allowance, overtime_pay, deductions,
+  site_name, role, department, type
+
+vehicles table:
+  car_name, plate_number, driver, fuel_balance,
+  last_service, maintenance_cost, status, notes
+
+────────────────────────────────────────
+CRITICAL ARCHITECTURE RULES
+────────────────────────────────────────
+1. ALL data flows through AppContext.tsx (src/context/AppContext.tsx)
+   — This is the single source of truth for all state.
+   — All CRUD operations go through this file.
+
+2. fixMirrorText() must be applied to ALL Arabic text inputs
+   — Excel exports from WPS often reverse Arabic character order.
+
+3. Supabase Promise.all MUST NOT include dashboard_stats
+   — It's a SECURITY DEFINER view that can fail silently.
+   — It's fetched separately in a try/catch block.
+
+4. NEVER use these table names (they do not exist):
+   - facilities (use housing_units instead)
+   - employees (use staff instead)
+
+5. 'dashboard_projects_view' exists in DB but is NEVER queried by frontend.
+
+────────────────────────────────────────
+WHAT TO BUILD NEXT (Priority Order)
+────────────────────────────────────────
+Priority 1 — Make Payroll fully functional:
+  - payroll_records schema is ready (migration done)
+  - Test add/edit/delete payroll record works end-to-end
+  - Test Excel import for payroll works
+
+Priority 2 — Database Truth Lock:
+  - Unify employee data: migrate employees_new (4 rows) → staff table
+  - Confirm all pages read from staff only
+
+Priority 3 — Activate empty modules:
+  - Documents: add sample data or import flow
+  - Assets: add sample data or import flow
+  - Approvals: basic approval workflow
+
+Priority 4 — Dashboard stats:
+  - dashboard_stats view currently returns no data
+  - Either fix the view SQL or calculate stats from live data
+  - Active Sites, Total Expenses, Updates count
+
+────────────────────────────────────────
+FILE STRUCTURE (key files)
+────────────────────────────────────────
+src/context/AppContext.tsx  ← MAIN ENGINE (all data logic)
+src/pages/Dashboard.tsx     ← Home page
+src/pages/Projects.tsx      ← Projects list + add form
+src/pages/ProjectDetail.tsx ← Engineering specs per project
+src/pages/Staff.tsx         ← HR management
+src/pages/Payroll.tsx       ← Payroll + Sarky mode
+src/pages/Fleet.tsx         ← Vehicles management
+src/pages/Facilities.tsx    ← Reads housing_units
+src/pages/Assets.tsx        ← Asset vault
+src/pages/Documents.tsx     ← Document tracking
+src/pages/Approvals.tsx     ← Approvals workflow
+src/pages/Import.tsx        ← Excel/CSV bulk upload
+src/lib/supabase.ts         ← Supabase client config
+
+────────────────────────────────────────
+DO NOT
+────────────────────────────────────────
+- Do NOT rename Supabase tables
+- Do NOT change the theme/design
+- Do NOT put dashboard_stats back in Promise.all
+- Do NOT use the 'facilities' table name
+- Do NOT use 'employees' table (use 'staff')
+- Do NOT hardcode data — always read from Supabase
+```
+
+---
+
+### 🚀 خطوات التسليم لـ Replit:
+
+1. **Import من GitHub** في Replit: `https://github.com/Darkman257/omega-ops-dashboard`
+2. **الصق الـ Prompt** ده كأول رسالة في Replit Agent
+3. **أضف الـ ENV Variables** في Replit Secrets:
+   - `VITE_SUPABASE_URL` = `https://kbdvcrjifqlunzawkobg.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = `eyJhbGciOi...` (المفتاح الكامل من ملف `.env`)
+
+Replit هيكون عنده كل السياق اللي يحتاجه للبناء من حيث وقفنا. 🦾💎
