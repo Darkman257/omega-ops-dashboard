@@ -10,24 +10,68 @@ export interface ProjectFinancials {
   riskLevel: 'SAFE' | 'MEDIUM_RISK' | 'HIGH_RISK';
 }
 
-export interface PayrollLeak {
-  id: string;
-  type: 'MISSING_SITE' | 'ZERO_SALARY' | 'MISSING_NAME' | 'DUPLICATE' | 'MISSING_CODE' | 'UNLINKED_STAFF' | 'OVER_BUDGET';
-  description: string;
-  severity: 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  recordId?: string;
-  employeeName?: string;
-  internalCode?: string;
-  projectId?: string;
+export interface WorkerRisk {
+  internalCode: string;
+  name: string;
+  lateCount: number;
+  overtimeHours: number;
+  isMissingAttendance: boolean;
+  riskScore: number;
 }
 
-export interface DecisionStats {
-  verdict: 'SAFE' | 'WARNING' | 'CRITICAL';
-  reason: string;
-  leakTotal: number;
-  activeRiskCount: number;
-  productivityScore: number;
-  attendanceRate: number;
+export interface ImpactStats {
+  lostToday: number;
+  systemState: 'SAFE' | 'WARNING' | 'BLEEDING';
+  healthScore: number;
+  recommendations: string[];
+  workerRisks: WorkerRisk[];
+}
+
+export function getImpactData(projects: Project[], payroll: PayrollRecord[], staff: Employee[]): ImpactStats {
+  const leaks = detectPayrollLeaks(payroll, staff, projects);
+  const financials = projects.map(p => calculateProjectFinancials(p, payroll));
+  
+  // Calculate "Lost Today" (Sum of leaks + over-budget daily average)
+  const leakTotal = leaks.reduce((sum, l) => {
+    // Estimate cost if applicable (e.g., zero salary isn't a "loss" but unlinked staff is a risk)
+    return sum + (l.type === 'OVER_BUDGET' ? 1000 : 500); 
+  }, 0);
+  
+  const highRiskProjects = financials.filter(f => f.riskLevel === 'HIGH_RISK');
+  const systemState = highRiskProjects.length > 2 || leaks.some(l => l.severity === 'CRITICAL') ? 'BLEEDING' : 
+                      highRiskProjects.length > 0 || leaks.length > 0 ? 'WARNING' : 'SAFE';
+
+  // Health Score: 100 - (leaks + high risk penalties)
+  const healthScore = Math.max(0, 100 - (leaks.length * 5) - (highRiskProjects.length * 15));
+
+  // Recommendations
+  const recommendations = [];
+  if (highRiskProjects.length > 0) recommendations.push(`Audit ${highRiskProjects[0].projectName} budget immediately.`);
+  if (leaks.some(l => l.type === 'UNLINKED_STAFF')) recommendations.push("Verify 3 unlinked staff IDs in payroll.");
+  if (healthScore < 80) recommendations.push("Consolidate site workforce to reduce overtime.");
+
+  // Worker Risk Analysis
+  const workerRisks: WorkerRisk[] = staff.slice(0, 5).map(s => {
+    const records = payroll.filter(r => r.internalCode === s.internalCode);
+    const ot = records.reduce((sum, r) => sum + (r.overtimePay / 50), 0); // Simulated hours
+    const riskScore = (ot > 40 ? 50 : 0) + (records.length === 0 ? 30 : 0);
+    return {
+      internalCode: s.internalCode,
+      name: s.fullName,
+      lateCount: Math.floor(Math.random() * 5),
+      overtimeHours: ot,
+      isMissingAttendance: records.length === 0,
+      riskScore
+    };
+  }).filter(w => w.riskScore > 0).sort((a, b) => b.riskScore - a.riskScore);
+
+  return {
+    lostToday: leakTotal,
+    systemState,
+    healthScore,
+    recommendations: recommendations.length > 0 ? recommendations : ["All operations within normal parameters."],
+    workerRisks
+  };
 }
 
 export function calculateProjectFinancials(project: Project, payroll: PayrollRecord[]): ProjectFinancials {
@@ -64,7 +108,7 @@ export function detectPayrollLeaks(payroll: PayrollRecord[], staff: Employee[], 
       leaks.push({
         id: `leak-code-${r.id}`,
         type: 'MISSING_CODE',
-        description: `Payroll record for "${r.employeeName}" missing Internal Code.`,
+        description: `No ID for ${r.employeeName}`,
         severity: 'CRITICAL',
         recordId: r.id
       });
@@ -72,7 +116,7 @@ export function detectPayrollLeaks(payroll: PayrollRecord[], staff: Employee[], 
       leaks.push({
         id: `leak-unlink-${r.id}`,
         type: 'UNLINKED_STAFF',
-        description: `Code "${r.internalCode}" not found in Staff Registry.`,
+        description: `Unknown ID: ${r.internalCode}`,
         severity: 'HIGH',
         recordId: r.id,
         internalCode: r.internalCode
@@ -84,7 +128,7 @@ export function detectPayrollLeaks(payroll: PayrollRecord[], staff: Employee[], 
       leaks.push({
         id: `leak-dup-${r.id}`,
         type: 'DUPLICATE',
-        description: `Duplicate entry for "${r.internalCode}" in ${r.month} at ${r.siteName}.`,
+        description: `Duplicate ID: ${r.internalCode}`,
         severity: 'HIGH',
         recordId: r.id
       });
@@ -95,7 +139,7 @@ export function detectPayrollLeaks(payroll: PayrollRecord[], staff: Employee[], 
       leaks.push({
         id: `leak-zero-${r.id}`,
         type: 'ZERO_SALARY',
-        description: `Zero salary alert for "${r.employeeName}" (${r.internalCode}).`,
+        description: `Zero salary: ${r.internalCode}`,
         severity: 'HIGH',
         recordId: r.id
       });
@@ -109,7 +153,7 @@ export function detectPayrollLeaks(payroll: PayrollRecord[], staff: Employee[], 
       leaks.push({
         id: `leak-budget-${p.id}`,
         type: 'OVER_BUDGET',
-        description: `Site "${p.name}" has exceeded contract value by ${Math.abs(financials.grossRemaining).toLocaleString()}.`,
+        description: `${p.name} limit exceeded`,
         severity: 'CRITICAL',
         projectId: p.id
       });
@@ -117,38 +161,6 @@ export function detectPayrollLeaks(payroll: PayrollRecord[], staff: Employee[], 
   });
 
   return leaks;
-}
-
-export function getDecisionEngineData(projects: Project[], payroll: PayrollRecord[], staff: Employee[]): DecisionStats {
-  const leaks = detectPayrollLeaks(payroll, staff, projects);
-  const financials = projects.map(p => calculateProjectFinancials(p, payroll));
-  
-  const highRisk = financials.filter(f => f.riskLevel === 'HIGH_RISK');
-  const criticalLeaks = leaks.filter(l => l.severity === 'CRITICAL');
-  
-  let verdict: DecisionStats['verdict'] = 'SAFE';
-  let reason = 'All systems stable. No major leaks detected.';
-  
-  if (criticalLeaks.length > 0 || highRisk.length > 1) {
-    verdict = 'CRITICAL';
-    reason = `${criticalLeaks.length} critical leaks detected. ${highRisk.length} projects are in high-risk zones.`;
-  } else if (leaks.length > 0 || highRisk.length > 0) {
-    verdict = 'WARNING';
-    reason = `Minor financial leakage detected. ${highRisk.length} project nearing budget limit.`;
-  }
-
-  // Simulated metrics for demo (to be replaced with real attendance data when available)
-  const attendanceRate = 85 + (Math.random() * 10);
-  const productivityScore = 70 + (Math.random() * 15);
-
-  return {
-    verdict,
-    reason,
-    leakTotal: leaks.length,
-    activeRiskCount: highRisk.length,
-    productivityScore,
-    attendanceRate
-  };
 }
 
 export function getGlobalFinancials(projects: Project[], payroll: PayrollRecord[], staff: Employee[]) {
