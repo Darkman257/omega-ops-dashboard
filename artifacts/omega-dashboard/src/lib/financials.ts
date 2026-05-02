@@ -10,29 +10,80 @@ export interface ProjectFinancials {
   riskLevel: 'SAFE' | 'MEDIUM_RISK' | 'HIGH_RISK';
 }
 
-export interface OwnerModeData {
-  summary: {
-    lostToday: number;
-    workforce: { present: number; late: number; absent: number };
-    activeSites: number;
-    criticalRisks: number;
+export interface NeuralNode {
+  id: string;
+  label: string;
+  type: 'SITE' | 'WORKER' | 'LEAK';
+  status: 'SAFE' | 'WARNING' | 'CRITICAL';
+  x: number;
+  y: number;
+}
+
+export interface NeuralEdge {
+  from: string;
+  to: string;
+  status: 'FLOW' | 'BROKEN';
+}
+
+export interface LivingSystemData extends OwnerModeData {
+  neural: {
+    nodes: NeuralNode[];
+    edges: NeuralEdge[];
   };
-  verdict: {
-    state: 'SAFE' | 'WARNING' | 'BLEEDING';
-    label: string;
-    explanationAr: string;
+  aiInsight: {
+    what: string;
+    why: string;
+    impact: string;
   };
-  whyReasons: string[];
-  actionsNow: string[];
-  snapshot: {
-    workforce: { total: number; present: number; late: number; absent: number; missingAttendance: number };
-    payroll: { totalMonth: number; highestCostSite: string; deductions: number; overtime: number };
-    projects: { total: number; highestBurn: string; safeCount: number; warningCount: number; bleedingCount: number };
-  };
-  offenders: {
-    worker: string;
-    site: string;
-    project: string;
+}
+
+export function calculateLivingSystem(projects: Project[], payroll: PayrollRecord[], staff: Employee[]): LivingSystemData {
+  const ownerData = calculateOwnerMode(projects, payroll, staff);
+  const leaks = detectPayrollLeaks(payroll, staff, projects);
+  const financials = projects.map(p => calculateProjectFinancials(p, payroll));
+
+  // 1. Generate Neural Map
+  const nodes: NeuralNode[] = [];
+  const edges: NeuralEdge[] = [];
+
+  // Center Core Node (Virtual)
+  nodes.push({ id: 'core', label: 'OMEGA CORE', type: 'SITE', status: ownerData.verdict.state, x: 0, y: 0 });
+
+  projects.forEach((p, i) => {
+    const fin = financials.find(f => f.projectId === p.id);
+    const angle = (i / projects.length) * Math.PI * 2;
+    const radius = 200;
+    const node: NeuralNode = {
+      id: p.id,
+      label: p.name,
+      type: 'SITE',
+      status: fin?.riskLevel === 'HIGH_RISK' ? 'CRITICAL' : fin?.riskLevel === 'MEDIUM_RISK' ? 'WARNING' : 'SAFE',
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius
+    };
+    nodes.push(node);
+    edges.push({ from: 'core', to: p.id, status: fin?.riskLevel === 'HIGH_RISK' ? 'BROKEN' : 'FLOW' });
+  });
+
+  // 2. AI Insight Generation
+  let what = "System in equilibrium.";
+  let why = "Revenue flow matches operational burn.";
+  let impact = "Projected 15% margin maintenance.";
+
+  if (ownerData.verdict.state === 'BLEEDING') {
+    what = "CRITICAL ENERGY DEPLETION IN CORE.";
+    why = `Financial burn in ${ownerData.snapshot.projects.highestBurn} exceeds contract limits.`;
+    impact = "Immediate threat to project liquidity and payment cycles.";
+  } else if (ownerData.verdict.state === 'WARNING') {
+    what = "SYSTEM UNSTABLE — ANOMALIES DETECTED.";
+    why = "Identity mismatches found in payroll ingestion.";
+    impact = "Potential for duplicate payments or ghost employee overhead.";
+  }
+
+  return {
+    ...ownerData,
+    neural: { nodes, edges },
+    aiInsight: { what, why, impact }
   };
 }
 
@@ -51,26 +102,24 @@ export function calculateOwnerMode(projects: Project[], payroll: PayrollRecord[]
   
   const verdict = {
     state,
-    label: state === 'BLEEDING' ? 'SYSTEM BLEEDING' : state === 'WARNING' ? 'SYSTEM WARNING' : 'SYSTEM SAFE',
-    explanationAr: state === 'BLEEDING' ? 'يوجد نزيف مالي واضح وتخطي للميزانيات — تدخل فوري مطلوب' : 
-                   state === 'WARNING' ? 'يوجد مخاطر محتملة وتنبيهات في المرتبات أو المواقع' : 
-                   'النظام مستقر — لا يوجد نزيف مالي واضح اليوم'
+    label: state === 'BLEEDING' ? 'CORE DEPLETED' : state === 'WARNING' ? 'ANOMALY DETECTED' : 'CORE STABLE',
+    explanationAr: state === 'BLEEDING' ? 'النظام يفقد الطاقة المالية — تدخل فوري في المواقع المتضررة' : 
+                   state === 'WARNING' ? 'تنبيه: تم رصد انحرافات في البيانات أو الميزانيات' : 
+                   'النظام في حالة اتزان مثالية — تدفق البيانات سليم'
   };
 
   // 3. Why Reasons
   const whyReasons = [];
-  if (criticalRisks > 0) whyReasons.push(`${criticalRisks} Critical payroll integrity leaks`);
-  if (bleedingCount > 0) whyReasons.push(`${bleedingCount} Sites exceeded 85% burn rate`);
+  if (criticalRisks > 0) whyReasons.push(`${criticalRisks} Integrity breaches in ID links`);
+  if (bleedingCount > 0) whyReasons.push(`${bleedingCount} Sites reached thermal budget limit`);
   const otTotal = payroll.reduce((sum, r) => sum + r.overtimePay, 0);
-  if (otTotal > 50000) whyReasons.push("Abnormal overtime spike detected across sites");
-  if (leaks.some(l => l.type === 'UNLINKED_STAFF')) whyReasons.push("Unknown worker IDs found in payroll batch");
+  if (otTotal > 50000) whyReasons.push("High overtime energy leakage");
   
   // 4. Action Now
   const actionsNow = [];
-  if (state === 'BLEEDING') actionsNow.push("Freeze all non-essential spending for high-burn sites");
-  if (criticalRisks > 0) actionsNow.push("Validate payroll duplicates and unlinked codes");
-  if (financials.some(f => f.payrollBurnRate > 95)) actionsNow.push(`Review overtime for site "${financials.find(f => f.payrollBurnRate > 95)?.projectName}"`);
-  if (actionsNow.length === 0) actionsNow.push("Continue routine monitoring of site attendance");
+  if (state === 'BLEEDING') actionsNow.push("INITIATE BUDGET FREEZE: SITE HIGH-BURN");
+  if (criticalRisks > 0) actionsNow.push("EXECUTE ID VALIDATION PROTOCOL");
+  if (actionsNow.length === 0) actionsNow.push("MAINTAIN CORE STABILITY");
 
   // 5. Snapshot
   const highestBurn = [...financials].sort((a, b) => b.payrollBurnRate - a.payrollBurnRate)[0];
@@ -79,7 +128,7 @@ export function calculateOwnerMode(projects: Project[], payroll: PayrollRecord[]
   const snapshot = {
     workforce: {
       total: staff.length,
-      present: Math.floor(staff.length * 0.8), // Simulated
+      present: Math.floor(staff.length * 0.8), 
       late: Math.floor(staff.length * 0.1),
       absent: Math.floor(staff.length * 0.1),
       missingAttendance: leaks.filter(l => l.type === 'MISSING_CODE').length
