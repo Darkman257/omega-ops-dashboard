@@ -30,6 +30,7 @@ const payrollSchema = z.object({
   overtimePay: z.coerce.number().min(0),
   deductions: z.coerce.number().min(0),
   status: z.enum(['Paid', 'Pending', 'On Hold']),
+  internalCode: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -39,7 +40,7 @@ const emptyDefaults: PayrollFormValues = {
   employeeName: '', role: '', department: '', siteName: '',
   month: new Date().toISOString().substring(0, 7),
   basicSalary: 0, siteAllowance: 0, overtimePay: 0, deductions: 0,
-  status: 'Pending', notes: ''
+  status: 'Pending', internalCode: '', notes: ''
 };
 
 const statusColor = (s: string) => {
@@ -149,7 +150,15 @@ function AddModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boo
 
   const onSubmit = (values: PayrollFormValues) => {
     const net = values.basicSalary + values.siteAllowance + values.overtimePay - values.deductions;
-    addPayrollRecord({ ...values, netSalary: Math.max(0, net), role: values.role || '', department: values.department || '', siteName: values.siteName || '', notes: values.notes || '' });
+    addPayrollRecord({ 
+      ...values, 
+      netSalary: Math.max(0, net), 
+      role: values.role || '', 
+      department: values.department || '', 
+      siteName: values.siteName || '', 
+      notes: values.notes || '',
+      internalCode: values.internalCode || ''
+    });
     onOpenChange(false);
     form.reset();
   };
@@ -192,13 +201,22 @@ function EditModal({ record, onClose }: { record: PayrollRecord; onClose: () => 
       overtimePay: record.overtimePay,
       deductions: record.deductions,
       status: record.status,
+      internalCode: record.internalCode || '',
       notes: record.notes || ''
     }
   });
 
   const onSubmit = (values: PayrollFormValues) => {
     const net = values.basicSalary + values.siteAllowance + values.overtimePay - values.deductions;
-    updatePayrollRecord(record.id, { ...values, netSalary: Math.max(0, net), role: values.role || '', department: values.department || '', siteName: values.siteName || '', notes: values.notes || '' });
+    updatePayrollRecord(record.id, { 
+      ...values, 
+      netSalary: Math.max(0, net), 
+      role: values.role || '', 
+      department: values.department || '', 
+      siteName: values.siteName || '', 
+      notes: values.notes || '',
+      internalCode: values.internalCode || ''
+    });
     onClose();
   };
 
@@ -226,7 +244,7 @@ function EditModal({ record, onClose }: { record: PayrollRecord; onClose: () => 
 }
 
 export default function Payroll() {
-  const { payrollRecords, deletePayrollRecord, siteFilter } = useAppContext();
+  const { payrollRecords, employees, deletePayrollRecord, siteFilter } = useAppContext();
   const [, navigate] = useLocation();
   const [search, setSearch] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
@@ -354,32 +372,38 @@ export default function Payroll() {
               <TableHeader className="bg-white/5">
                 <TableRow className="border-white/10 hover:bg-transparent">
                   <TableHead className="text-muted-foreground">Employee</TableHead>
+                  <TableHead className="text-muted-foreground">Code</TableHead>
                   <TableHead className="text-muted-foreground">Site</TableHead>
                   <TableHead className="text-muted-foreground">Month</TableHead>
-                  <TableHead className="text-muted-foreground text-right">Basic</TableHead>
-                  <TableHead className="text-muted-foreground text-right">Allowance</TableHead>
-                  <TableHead className="text-muted-foreground text-right">Overtime</TableHead>
-                  <TableHead className="text-muted-foreground text-right">Deductions</TableHead>
                   <TableHead className="text-muted-foreground text-right font-semibold text-primary">Net Salary</TableHead>
                   <TableHead className="text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-muted-foreground">Integrity</TableHead>
                   <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {finalFiltered.map((r, i) => {
                   const net = r.basicSalary + r.siteAllowance + r.overtimePay - r.deductions;
+                  const hasCode = !!r.internalCode;
+                  const isGhost = hasCode && !employees.some(e => e.internalCode === r.internalCode);
+                  
                   return (
                     <motion.tr
                       key={r.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.03 }}
-                      className="border-white/10 hover:bg-white/5 transition-colors group"
+                      className={`border-white/10 hover:bg-white/5 transition-colors group ${!hasCode || isGhost ? 'bg-red-500/5' : ''}`}
                       data-testid={`row-payroll-${r.id}`}
                     >
                       <TableCell>
                         <div className="font-medium text-sm">{r.employeeName}</div>
                         {r.role && <div className="text-xs text-muted-foreground">{r.role}</div>}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`text-xs font-mono ${!hasCode ? 'text-red-500' : 'text-muted-foreground'}`}>
+                          {r.internalCode || 'MISSING'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         {r.siteName
@@ -388,16 +412,21 @@ export default function Payroll() {
                         }
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{r.month}</TableCell>
-                      <TableCell className="text-right text-sm font-mono">{fmt(r.basicSalary)}</TableCell>
-                      <TableCell className="text-right text-sm font-mono">{fmt(r.siteAllowance)}</TableCell>
-                      <TableCell className="text-right text-sm font-mono">{r.overtimePay > 0 ? fmt(r.overtimePay) : <span className="text-muted-foreground/40">—</span>}</TableCell>
-                      <TableCell className="text-right text-sm font-mono text-red-400">{r.deductions > 0 ? `(${fmt(r.deductions)})` : <span className="text-muted-foreground/40">—</span>}</TableCell>
                       <TableCell className="text-right">
                         <span className="font-bold text-primary">{fmt(Math.max(0, net))}</span>
                         <span className="text-[10px] text-muted-foreground ml-1">EGP</span>
                       </TableCell>
                       <TableCell>
                         <Badge className={`${statusColor(r.status)} text-[10px] pointer-events-none`}>{r.status}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {!hasCode ? (
+                          <Badge variant="outline" className="text-[10px] border-red-500/50 text-red-500">No Identity</Badge>
+                        ) : isGhost ? (
+                          <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-500">Unlinked</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] border-emerald-500/50 text-emerald-500">Verified</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

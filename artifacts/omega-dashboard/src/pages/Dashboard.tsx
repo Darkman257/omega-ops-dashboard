@@ -1,289 +1,306 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useAppContext } from '@/context/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { 
-  Briefcase, Users, AlertTriangle, DollarSign, 
-  TrendingDown, ShieldAlert, Target, Activity, ExternalLink
+  ShieldAlert, 
+  BrainCircuit, 
+  TrendingDown, 
+  Users, 
+  Activity, 
+  AlertCircle, 
+  CheckCircle2, 
+  ArrowUpRight, 
+  Timer,
+  Eye,
+  Radar,
+  Wallet,
+  Zap
 } from 'lucide-react';
-import { formatCurrency, getDocumentStatus } from '@/lib/utils';
-import { getGlobalFinancials } from '@/lib/financials';
+import { useAppContext } from '@/context/AppContext';
+import { Card, CardContent } from '@/components/ui/card';
+import { getGlobalFinancials, getDecisionEngineData, PayrollLeak } from '@/lib/financials';
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const item = {
+  hidden: { y: 20, opacity: 0 },
+  show: { y: 0, opacity: 1 }
+};
 
 export default function Dashboard() {
-  const { projects, employees, documents, payrollRecords } = useAppContext();
-  const financialData = getGlobalFinancials(projects, payrollRecords);
+  const { projects, payrollRecords: payroll, employees } = useAppContext();
 
-  // KPIs
-  const activeProjects = projects.filter(p => p.status === 'In Progress').length;
-  const totalStaff = employees.length;
-  const expiringDocs = documents.filter(d => getDocumentStatus(d.expiryDate) === 'Expiring Soon').length;
-  const totalPayroll = financialData.totalPayrollCost;
-
-  // Chart Data
-  const statusCounts = projects.reduce((acc, p) => {
-    acc[p.status] = (acc[p.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
-  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
-
-  const activityData = [
-    { name: 'Mon', activities: 12 },
-    { name: 'Tue', activities: 19 },
-    { name: 'Wed', activities: 15 },
-    { name: 'Thu', activities: 22 },
-    { name: 'Fri', activities: 28 },
-    { name: 'Sat', activities: 8 },
-    { name: 'Sun', activities: 5 },
-  ];
-
-  const recentProjects = [...projects].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3);
-
-  const deptCounts = employees.reduce((acc, e) => {
-    acc[e.department] = (acc[e.department] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } }
-  };
+  const financials = useMemo(() => getGlobalFinancials(projects, payroll, employees), [projects, payroll, employees]);
+  const decision = useMemo(() => getDecisionEngineData(projects, payroll, employees), [projects, payroll, employees]);
 
   return (
     <motion.div 
-      className="space-y-6"
-      variants={containerVariants}
+      variants={container}
       initial="hidden"
       animate="show"
+      className="space-y-6"
     >
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Executive Overview</h1>
+      {/* SECTION 1: TOP RADAR & VERDICT */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEAK RADAR */}
+        <motion.div variants={item} className="lg:col-span-2">
+          <Card className="bg-white/5 backdrop-blur-md border-white/10 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Radar size={120} className="text-primary animate-pulse" />
+            </div>
+            <CardContent className="p-6 relative overflow-hidden">
+              <div className="scanline" />
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-red-500/10 rounded-lg">
+                  <ShieldAlert className="text-red-500" size={24} />
+                </div>
+                <h2 className="text-xl font-bold text-foreground">Leak Radar <span className="text-xs font-normal text-muted-foreground ml-2">Live Alerts</span></h2>
+              </div>
+              
+              <div className="space-y-3">
+                {financials.leaks.length > 0 ? (
+                  financials.leaks.slice(0, 3).map((leak: PayrollLeak) => (
+                    <div key={leak.id} className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/5 hover:border-red-500/30 transition-all group/leak">
+                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${leak.severity === 'CRITICAL' ? 'bg-red-500 animate-ping' : 'bg-amber-500'}`} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground group-hover/leak:text-red-400 transition-colors">{leak.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">Source: {leak.type.replace('_', ' ')}</p>
+                      </div>
+                      <AlertCircle size={16} className="text-muted-foreground opacity-0 group-hover/leak:opacity-100 transition-opacity" />
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <CheckCircle2 size={40} className="text-emerald-500 mb-3 opacity-50" />
+                    <p className="text-muted-foreground text-sm italic">No leaks detected in the last 24 hours.</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* DAILY VERDICT */}
+        <motion.div variants={item}>
+          <Card className={`h-full border-white/10 overflow-hidden relative ${
+            decision.verdict === 'CRITICAL' ? 'bg-gradient-to-br from-red-500/20 to-transparent' : 
+            decision.verdict === 'WARNING' ? 'bg-gradient-to-br from-amber-500/20 to-transparent' : 
+            'bg-gradient-to-br from-emerald-500/20 to-transparent'
+          }`}>
+            <CardContent className="p-6 flex flex-col h-full">
+              <div className="flex items-center gap-3 mb-6">
+                <BrainCircuit className="text-primary" size={24} />
+                <h2 className="text-xl font-bold text-foreground">Smart Verdict</h2>
+              </div>
+              
+              <div className="flex-1 flex flex-col justify-center text-center">
+                <div className={`text-4xl font-black mb-4 uppercase tracking-tighter ${
+                  decision.verdict === 'CRITICAL' ? 'text-red-500' : 
+                  decision.verdict === 'WARNING' ? 'text-amber-500' : 
+                  'text-emerald-500'
+                }`}>
+                  {decision.verdict}
+                </div>
+                <p className="text-foreground font-medium leading-relaxed mb-6">
+                  "{decision.reason}"
+                </p>
+              </div>
+
+              <div className="bg-white/5 rounded-xl p-4 border border-white/5 text-xs text-muted-foreground">
+                <Zap size={14} className="inline mr-2 text-primary" />
+                AI Suggestion: Consider auditing Site "{financials.highestCostSite}" to optimize overtime distribution.
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* SECTION 2: CORE METRICS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: "Active Projects", value: activeProjects, icon: Briefcase, color: "text-blue-400" },
-          { title: "Total Staff", value: totalStaff, icon: Users, color: "text-green-400" },
-          { title: "Expiring Documents", value: expiringDocs, icon: AlertTriangle, color: "text-orange-400" },
-          { title: "Total Payroll Cost", value: formatCurrency(totalPayroll), icon: TrendingDown, color: "text-primary" }
-        ].map((kpi, i) => (
-          <motion.div key={i} variants={itemVariants}>
-            <Card className="bg-white/5 backdrop-blur-sm border-white/10 shadow-[0_0_20px_rgba(201,168,76,0.1)]">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{kpi.title}</CardTitle>
-                <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpi.value}</div>
+          { label: 'Attendance Rate', value: `${decision.attendanceRate.toFixed(1)}%`, sub: '18 / 25 Present', icon: Timer, color: 'text-primary' },
+          { label: 'Productivity', value: `${decision.productivityScore.toFixed(1)}%`, sub: '+3% vs last week', icon: Activity, color: 'text-emerald-500' },
+          { label: 'Active Leaks', value: decision.leakTotal, sub: 'Requires Review', icon: ShieldAlert, color: 'text-red-500' },
+          { label: 'High Risk Sites', value: decision.activeRiskCount, sub: 'Budget Threshold', icon: TrendingDown, color: 'text-amber-500' }
+        ].map((stat, i) => (
+          <motion.div key={i} variants={item}>
+            <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`p-2 rounded-lg bg-white/5 ${stat.color}`}>
+                    <stat.icon size={20} />
+                  </div>
+                  <span className="text-xs text-muted-foreground font-medium uppercase">{stat.label}</span>
+                </div>
+                <div className="text-2xl font-bold text-foreground mb-1">{stat.value}</div>
+                <div className="text-xs text-muted-foreground">{stat.sub}</div>
               </CardContent>
             </Card>
           </motion.div>
         ))}
       </div>
 
-      {/* Financial Control Panel */}
-      <motion.div variants={itemVariants}>
-        <Card className="bg-primary/5 border-primary/20 backdrop-blur-sm overflow-hidden relative">
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-            <ShieldAlert size={120} className="text-primary" />
-          </div>
-          <CardHeader className="border-b border-primary/10 bg-primary/5">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ShieldAlert className="h-5 w-5 text-primary" />
-                Financial Control & Leak Detection
-              </CardTitle>
-              <Badge variant="outline" className="border-primary/30 text-primary bg-primary/5">TRUTH-LOCK ACTIVE</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                  <Target className="h-3 w-3 text-primary" />
-                  Highest Cost Site
-                </p>
-                <p className="text-lg font-bold">{financialData.highestCostSite}</p>
-                <p className="text-[10px] text-muted-foreground">Based on current payroll</p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                  <Activity className="h-3 w-3 text-red-400" />
-                  Projects at Risk
-                </p>
-                <p className="text-lg font-bold text-red-400">{financialData.projectsAtRisk}</p>
-                <p className="text-[10px] text-muted-foreground">Burn rate &gt; 70%</p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                  <AlertTriangle className="h-3 w-3 text-orange-400" />
-                  Payroll Leaks
-                </p>
-                <p className="text-lg font-bold text-orange-400">{financialData.leaksCount}</p>
-                <p className="text-[10px] text-muted-foreground">Data integrity alerts</p>
-              </div>
-
-              <div className="flex items-end justify-end">
-                <Button variant="outline" size="sm" className="border-primary/20 hover:bg-primary/10 text-primary h-9 gap-2">
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Detailed Report
-                </Button>
-              </div>
-            </div>
-            
-            {financialData.leaks.length > 0 && (
-              <div className="mt-6 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
-                <div className="flex items-center gap-2 text-orange-400 mb-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Critical Integrity Leaks</span>
+      {/* SECTION 3: COST VS BUDGET & WORKFORCE */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* COST VS BUDGET */}
+        <motion.div variants={item} className="lg:col-span-2">
+          <Card className="bg-white/5 border-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <Wallet className="text-primary" size={24} />
+                  <h2 className="text-xl font-bold text-foreground">Cost vs Budget Reality</h2>
                 </div>
-                <div className="space-y-2">
-                  {financialData.leaks.slice(0, 2).map(leak => (
-                    <div key={leak.id} className="text-xs text-muted-foreground flex items-center justify-between">
-                      <span>• {leak.description}</span>
-                      <Badge variant="outline" className="h-4 text-[9px] border-orange-500/30 text-orange-400">{leak.severity}</Badge>
+                <div className="text-xs text-muted-foreground">Updated Now</div>
+              </div>
+
+              <div className="space-y-6">
+                {financials.allProjectFinancials.slice(0, 3).map(f => (
+                  <div key={f.projectId} className="space-y-2">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <div className="text-sm font-bold text-foreground mb-0.5">{f.projectName}</div>
+                        <div className="text-xs text-muted-foreground">Contract: {f.contractValue.toLocaleString()} EGP</div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-sm font-bold ${f.grossRemaining < 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                          {f.totalPayrollCost.toLocaleString()} EGP
+                        </div>
+                        <div className="text-xs text-muted-foreground">Burn: {f.payrollBurnRate.toFixed(1)}%</div>
+                      </div>
                     </div>
-                  ))}
-                  {financialData.leaks.length > 2 && (
-                    <p className="text-[10px] text-muted-foreground italic">+{financialData.leaks.length - 2} more alerts in detailed report</p>
-                  )}
-                </div>
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, f.payrollBurnRate)}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className={`h-full rounded-full ${
+                          f.payrollBurnRate > 90 ? 'bg-red-500' : 
+                          f.payrollBurnRate > 70 ? 'bg-amber-500' : 'bg-primary'
+                        }`}
+                      />
+                    </div>
+                    {f.grossRemaining < 0 && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-red-500 font-bold uppercase tracking-widest mt-1">
+                        <AlertCircle size={10} /> ⚠️ LEAK: +{Math.abs(f.grossRemaining).toLocaleString()} Over Budget
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Charts */}
-        <motion.div variants={itemVariants} className="col-span-4">
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 h-full">
-            <CardHeader>
-              <CardTitle>Weekly Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={activityData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(10, 15, 30, 0.9)', borderColor: 'rgba(255,255,255,0.1)', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Bar dataKey="activities" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
             </CardContent>
           </Card>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="col-span-3">
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 h-full">
-            <CardHeader>
-              <CardTitle>Project Status</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[300px] flex items-center justify-center">
-              {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: 'rgba(10, 15, 30, 0.9)', borderColor: 'rgba(255,255,255,0.1)' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}/>
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-center space-y-1">
-                  <div className="text-muted-foreground text-sm font-medium">No data available</div>
-                  <div className="text-xs text-muted-foreground/60">Add or upload projects to see status breakdown</div>
+        {/* LIVE SITE FEED */}
+        <motion.div variants={item}>
+          <Card className="bg-[#0B1120] border-white/10 h-full overflow-hidden">
+            <CardContent className="p-0 flex flex-col h-full">
+              <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <div className="flex items-center gap-2">
+                  <Eye size={16} className="text-primary animate-pulse" />
+                  <span className="text-sm font-bold">Live Control Feed</span>
                 </div>
-              )}
+                <span className="flex items-center gap-1.5 text-[10px] bg-red-500/20 text-red-500 px-2 py-0.5 rounded-full font-bold">
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" /> REC
+                </span>
+              </div>
+              <div className="flex-1 bg-black/40 p-4 font-mono text-[11px] text-primary/80 overflow-y-auto">
+                <div className="space-y-2">
+                  <div className="text-emerald-500">[14:15] System: Secure Connection Est.</div>
+                  <div>[14:22] Gate: ID-723 Check-in (San Stefano)</div>
+                  <div className="text-amber-500">[14:30] Alert: ID-105 Repeated Delay</div>
+                  <div>[14:45] Log: Material Requisition #829 approved</div>
+                  <div>[14:55] Site: Workforce count matched (18/25)</div>
+                  <div className="text-red-500">[15:05] ALERT: Code GHOST-999 detected</div>
+                  <div className="animate-pulse">_</div>
+                </div>
+              </div>
+              <div className="p-4 bg-white/5 border-t border-white/10">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-center p-2 bg-white/5 rounded-lg">
+                    <div className="text-[10px] text-muted-foreground uppercase">Now on Site</div>
+                    <div className="text-xl font-bold">18</div>
+                  </div>
+                  <div className="text-center p-2 bg-white/5 rounded-lg">
+                    <div className="text-[10px] text-muted-foreground uppercase">Late</div>
+                    <div className="text-xl font-bold text-amber-500">4</div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-        <motion.div variants={itemVariants}>
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 h-full">
-            <CardHeader>
-              <CardTitle>Recent Projects</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentProjects.length > 0 ? (
-                <div className="space-y-4">
-                  {recentProjects.map(p => (
-                    <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
-                      <div>
-                        <div className="font-medium text-sm">{p.name}</div>
-                        <div className="text-xs text-muted-foreground">{p.client}</div>
+      {/* SECTION 4: RISK RANKING & ACTIVITY */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* RISK RANKING */}
+        <motion.div variants={item}>
+          <Card className="bg-white/5 border-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <TrendingDown className="text-red-500" size={24} />
+                <h2 className="text-xl font-bold text-foreground">Site Risk Ranking</h2>
+              </div>
+              
+              <div className="space-y-4">
+                {financials.allProjectFinancials
+                  .sort((a, b) => b.payrollBurnRate - a.payrollBurnRate)
+                  .map((f, idx) => (
+                    <div key={f.projectId} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
+                      <div className="flex items-center gap-4">
+                        <span className={`text-lg font-black italic ${idx === 0 ? 'text-red-500' : 'text-muted-foreground/30'}`}>#{idx + 1}</span>
+                        <div>
+                          <div className="text-sm font-bold text-foreground">{f.projectName}</div>
+                          <div className={`text-[10px] uppercase font-bold tracking-widest ${
+                            f.riskLevel === 'HIGH_RISK' ? 'text-red-500' : 
+                            f.riskLevel === 'MEDIUM_RISK' ? 'text-amber-500' : 'text-emerald-500'
+                          }`}>
+                            {f.riskLevel.replace('_', ' ')}
+                          </div>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium text-sm text-primary">{formatCurrency(p.budget)}</div>
-                        <div className="text-xs text-muted-foreground">{p.status}</div>
+                        <div className="text-sm font-bold text-foreground">{f.payrollBurnRate.toFixed(1)}%</div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Burn Rate</div>
                       </div>
                     </div>
                   ))}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">No recent projects.</div>
-              )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        <motion.div variants={itemVariants}>
-          <Card className="bg-white/5 backdrop-blur-sm border-white/10 h-full">
-            <CardHeader>
-              <CardTitle>Staff Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {Object.keys(deptCounts).length > 0 ? (
-                <div className="space-y-4">
-                  {Object.entries(deptCounts).map(([dept, count]) => (
-                    <div key={dept} className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">{dept}</span>
-                      <span className="text-sm font-medium">{count} employee(s)</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center space-y-1">
-                  <div className="text-sm text-muted-foreground font-medium">No data available</div>
-                  <div className="text-xs text-muted-foreground/60">Add or upload staff to see department breakdown</div>
-                </div>
-              )}
+        {/* GLOBAL DECISION BOARD */}
+        <motion.div variants={item}>
+          <Card className="bg-white/5 border-white/10 overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <Users className="text-primary" size={24} />
+                <h2 className="text-xl font-bold text-foreground">Global Activity Feed</h2>
+              </div>
+              <div className="space-y-6 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-white/10">
+                {[
+                  { time: '14:22', msg: 'Mahmoud Entered San Stefano Stage 1', type: 'info' },
+                  { time: '14:30', msg: 'Ahmed Late arrival - 45 mins (Stage 2)', type: 'warn' },
+                  { time: '14:55', msg: 'Material Requisition Approved - 3,200 EGP', type: 'info' },
+                  { time: '15:10', msg: 'Anomaly Detected: Code GHOST-999', type: 'error' },
+                ].map((log, i) => (
+                  <div key={i} className="relative pl-8">
+                    <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-[#0B1120] ${
+                      log.type === 'error' ? 'bg-red-500' : log.type === 'warn' ? 'bg-amber-500' : 'bg-primary'
+                    }`} />
+                    <div className="text-[10px] text-muted-foreground font-mono mb-1">{log.time}</div>
+                    <div className="text-sm text-foreground font-medium">{log.msg}</div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
