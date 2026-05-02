@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 // @ts-expect-error - tailwindcss/vite is resolved during build

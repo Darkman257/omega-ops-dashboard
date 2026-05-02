@@ -13,7 +13,10 @@ import {
   Cpu,
   Fingerprint,
   Radio,
-  Network
+  Network,
+  TrendingDown,
+  Users,
+  Target
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -27,7 +30,7 @@ import {
 } from 'recharts';
 import { useAppContext } from '@/context/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { calculateLivingSystem, NeuralNode } from '@/lib/financials';
+import { calculateLivingSystem, NeuralNode, LivingSystemData } from '@/lib/financials';
 
 const container = {
   hidden: { opacity: 0 },
@@ -169,7 +172,7 @@ export default function Dashboard() {
               </div>
 
               <div className="pt-6 border-t border-white/5 flex gap-4">
-                {living.actionsNow.map((action, i) => (
+                {living.actionsNow.map((action: string, i: number) => (
                   <button key={i} className="flex-1 bg-white/5 hover:bg-primary hover:text-black border border-white/10 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
                     {action}
                   </button>
@@ -231,10 +234,10 @@ export default function Dashboard() {
       {/* 5. BOTTOM COMMAND STRIPS (REACTIVE) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
         {[
-          { label: 'Energy Loss', value: living.summary.lostToday.toLocaleString(), icon: TrendingDown, color: 'text-red-500' },
-          { label: 'Signal Strength', value: `${living.summary.workforce.present} Dots`, icon: Fingerprint, color: 'text-primary' },
-          { label: 'Neural Nodes', value: living.summary.activeSites, icon: Activity, color: 'text-emerald-500' },
-          { label: 'Risk Anomalies', value: living.summary.criticalRisks, icon: ShieldAlert, color: 'text-red-500' }
+          { label: 'Lost Today', value: living.summary.lostToday, sub: 'Leak Estimate', icon: TrendingDown, color: '#EF4444', spark: [300, 500, 400, 700, 600, 1000] },
+          { label: 'Workforce', value: living.summary.workforce.present, sub: 'Active Now', icon: Users, color: '#C9A84C', spark: [10, 15, 12, 18, 17, 20] },
+          { label: 'Active Sites', value: living.summary.activeSites, sub: 'Running Now', icon: Target, color: '#10B981', spark: [2, 3, 3, 4, 4, 5] },
+          { label: 'Critical Risks', value: living.summary.criticalRisks, sub: 'Action Required', icon: ShieldAlert, color: '#F59E0B', spark: [0, 1, 2, 1, 2, 3] }
         ].map((stat, i) => (
           <motion.div key={i} variants={container} className="p-6 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-center group hover:border-primary/50 transition-all">
             <div>

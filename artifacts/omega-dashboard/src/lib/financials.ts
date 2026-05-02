@@ -10,11 +10,37 @@ export interface ProjectFinancials {
   riskLevel: 'SAFE' | 'MEDIUM_RISK' | 'HIGH_RISK';
 }
 
+export interface OwnerModeData {
+  summary: {
+    lostToday: number;
+    workforce: { present: number; late: number; absent: number };
+    activeSites: number;
+    criticalRisks: number;
+  };
+  verdict: {
+    state: 'SAFE' | 'WARNING' | 'BLEEDING';
+    label: string;
+    explanationAr: string;
+  };
+  whyReasons: string[];
+  actionsNow: string[];
+  snapshot: {
+    workforce: { total: number; present: number; late: number; absent: number; missingAttendance: number };
+    payroll: { totalMonth: number; highestCostSite: string; deductions: number; overtime: number };
+    projects: { total: number; highestBurn: string; safeCount: number; warningCount: number; bleedingCount: number };
+  };
+  offenders: {
+    worker: string;
+    site: string;
+    project: string;
+  };
+}
+
 export interface NeuralNode {
   id: string;
   label: string;
   type: 'SITE' | 'WORKER' | 'LEAK';
-  status: 'SAFE' | 'WARNING' | 'CRITICAL';
+  status: 'SAFE' | 'WARNING' | 'CRITICAL' | 'BLEEDING';
   x: number;
   y: number;
 }
@@ -47,7 +73,7 @@ export function calculateLivingSystem(projects: Project[], payroll: PayrollRecor
   const edges: NeuralEdge[] = [];
 
   // Center Core Node (Virtual)
-  nodes.push({ id: 'core', label: 'OMEGA CORE', type: 'SITE', status: ownerData.verdict.state, x: 0, y: 0 });
+  nodes.push({ id: 'core', label: 'OMEGA CORE', type: 'SITE', status: ownerData.verdict.state === 'BLEEDING' ? 'BLEEDING' : ownerData.verdict.state === 'WARNING' ? 'WARNING' : 'SAFE', x: 0, y: 0 });
 
   projects.forEach((p, i) => {
     const fin = financials.find(f => f.projectId === p.id);
@@ -57,7 +83,7 @@ export function calculateLivingSystem(projects: Project[], payroll: PayrollRecor
       id: p.id,
       label: p.name,
       type: 'SITE',
-      status: fin?.riskLevel === 'HIGH_RISK' ? 'CRITICAL' : fin?.riskLevel === 'MEDIUM_RISK' ? 'WARNING' : 'SAFE',
+      status: fin?.riskLevel === 'HIGH_RISK' ? 'BLEEDING' : fin?.riskLevel === 'MEDIUM_RISK' ? 'WARNING' : 'SAFE',
       x: Math.cos(angle) * radius,
       y: Math.sin(angle) * radius
     };
