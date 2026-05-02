@@ -557,14 +557,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (type === 'staff') {
       const rows = data.map(item => ({
-        full_name: String(pick(item, 'name', 'employeeName', 'employee_name', 'الاسم', 'اسم الموظف', 'full_name') ?? ''),
-        job_title: String(pick(item, 'role', 'job_title', 'position', 'الوظيفة', 'المسمى', 'title') ?? ''),
-        department: String(pick(item, 'department', 'dept', 'القسم') ?? ''),
-        phone: String(pick(item, 'phone', 'mobile', 'الهاتف', 'tel') ?? ''),
-        email: String(pick(item, 'email', 'البريد الإلكتروني') ?? ''),
-        basic_salary: Number(pick(item, 'basicSalary', 'basic_salary', 'salary', 'الراتب الأساسي', 'الراتب') ?? 0),
+        full_name: String(pick(item, 'name', 'Name', 'الاسم', 'مسال', 'full_name', 'employeeName') ?? ''),
+        job_title: String(pick(item, 'role', 'Role', 'الوظيفة', 'قفيظولا', 'job_title', 'position', 'المسمى') ?? ''),
+        department: String(pick(item, 'department', 'القسم', 'تاردإلا', 'dept') ?? ''),
+        phone: String(pick(item, 'phone', 'mobile', 'تليفون', 'الهاتف', 'tel') ?? ''),
+        email: String(pick(item, 'email', 'البريد', 'البريد الإلكتروني') ?? ''),
+        basic_salary: Number(pick(item, 'basicSalary', 'basic_salary', 'الراتب الأساسي', 'الراتب', 'salary') ?? 0),
         internal_code: String(pick(item, 'internalCode', 'internal_code', 'code', 'id', 'الرقم الوظيفي', 'كود') ?? ''),
-        status: 'active',
+        status: String(pick(item, 'status', 'الحالة') ?? 'active').toLowerCase(),
+        site_allowance: 0,
+        current_site: '',
       })).filter(r => r.full_name && r.internal_code);
 
       supabase.from('staff').insert(rows).select()
@@ -595,23 +597,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
     } else if (type === 'payroll') {
       const rows = data.map(item => {
-        const basic = Number(pick(item, 'basicSalary', 'basic_salary', 'basic', 'الراتب الأساسي', 'الراتب', 'salary') ?? 0);
+        const basic = Number(pick(item, 'basicSalary', 'basic_salary', 'الراتب الأساسي', 'الراتب', 'salary') ?? 0);
         const allowance = Number(pick(item, 'siteAllowance', 'site_allowance', 'بدل الموقع', 'بدل') ?? 0);
-        const overtime = Number(pick(item, 'overtimePay', 'overtime', 'overtime_pay', 'إضافي', 'عمل إضافي', 'OT') ?? 0);
-        const deductions = Number(pick(item, 'deductions', 'deduction', 'خصومات', 'خصم') ?? 0);
+        const overtime = Number(pick(item, 'overtimePay', 'overtime_pay', 'إضافي', 'الاضافي', 'OT') ?? 0);
+        const deductions = Number(pick(item, 'deductions', 'خصومات', 'استقطاعات', 'سلف') ?? 0);
+        const net = Number(pick(item, 'netSalary', 'net_salary', 'الصافي') ?? 0);
+        
         return {
-          employee_name: String(pick(item, 'employeeName', 'employee_name', 'name', 'الاسم', 'اسم الموظف') ?? ''),
+          employee_name: String(pick(item, 'employeeName', 'employee_name', 'اسم الموظف', 'الاسم') ?? ''),
           internal_code: String(pick(item, 'internalCode', 'internal_code', 'code', 'id', 'الرقم الوظيفي', 'كود') ?? ''),
-          role: String(pick(item, 'role', 'الوظيفة', 'المسمى', 'title') ?? ''),
-          department: String(pick(item, 'department', 'القسم') ?? ''),
-          site_name: String(pick(item, 'siteName', 'site_name', 'site', 'الموقع', 'المشروع') ?? ''),
-          month: String(pick(item, 'month', 'الشهر', 'تاريخ') ?? ''),
+          month: String(pick(item, 'month', 'الشهر') ?? new Date().toISOString().slice(0, 7)),
           basic_salary: basic,
           site_allowance: allowance,
           overtime_pay: overtime,
           deductions,
-          net_salary: Math.max(0, basic + allowance + overtime - deductions),
-          status: String(pick(item, 'status', 'الحالة') ?? 'Pending'),
+          net_salary: net || Math.max(0, basic + allowance + overtime - deductions),
+          notes: String(pick(item, 'notes', 'ملاحظات') ?? ''),
+          role: '',
+          department: '',
+          site_name: '',
+          status: 'Pending',
         };
       }).filter(r => r.employee_name && r.internal_code);
 
