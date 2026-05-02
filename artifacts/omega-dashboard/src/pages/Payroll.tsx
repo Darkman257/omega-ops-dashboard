@@ -16,7 +16,7 @@ import { useLocation } from 'wouter';
 import * as z from 'zod';
 import {
   Banknote, Plus, Search, Pencil, Trash2,
-  Upload, TrendingUp, Users, CheckCircle2, Clock
+  Upload, TrendingUp, Users, CheckCircle2, Clock, MapPin
 } from 'lucide-react';
 
 const payrollSchema = z.object({
@@ -245,10 +245,22 @@ export default function Payroll() {
     return matchesSearch && matchesSite && matchesMonth && matchesStatus;
   });
 
-  const totalNet = filtered.reduce((s, r) => s + r.netSalary, 0);
+  const totals = filtered.reduce((acc, r) => ({
+    basic: acc.basic + r.basicSalary,
+    allowance: acc.allowance + r.siteAllowance,
+    overtime: acc.overtime + r.overtimePay,
+    deductions: acc.deductions + r.deductions,
+    net: acc.net + r.netSalary,
+  }), { basic: 0, allowance: 0, overtime: 0, deductions: 0, net: 0 });
+
   const paidCount = filtered.filter(r => r.status === 'Paid').length;
   const pendingCount = filtered.filter(r => r.status === 'Pending').length;
-  const avgNet = filtered.length > 0 ? totalNet / filtered.length : 0;
+
+  // Get unique departments for filter
+  const departments = Array.from(new Set(payrollRecords.map(r => r.department).filter(Boolean)));
+  const [deptFilter, setDeptFilter] = useState('');
+
+  const finalFiltered = filtered.filter(r => !deptFilter || r.department === deptFilter);
 
   const iClass = "h-8 bg-white/5 border-white/10 text-sm";
 
@@ -267,6 +279,13 @@ export default function Payroll() {
             <Input placeholder="Search..." className={`pl-9 ${iClass} w-44`} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <Input type="month" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className={`${iClass} w-36`} />
+          <Select value={deptFilter || '__all__'} onValueChange={v => setDeptFilter(v === '__all__' ? '' : v)}>
+            <SelectTrigger className={`${iClass} w-32`}><SelectValue placeholder="Dept" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All Depts</SelectItem>
+              {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={statusFilter || '__all__'} onValueChange={v => setStatusFilter(v === '__all__' ? '' : v)}>
             <SelectTrigger className={`${iClass} w-32`}><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -277,29 +296,32 @@ export default function Payroll() {
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" className="h-8 border-white/10 bg-white/5 gap-1.5" onClick={() => navigate('/import')}>
-            <Upload size={14} /> Import Excel
+            <Upload size={14} /> Import
           </Button>
           <Button className="h-8" onClick={() => setAddOpen(true)} data-testid="button-add-payroll-open">
-            <Plus size={15} className="mr-1.5" /> Add Record
+            <Plus size={15} />
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: 'Total Net Payroll', value: `EGP ${fmt(Math.round(totalNet))}`, icon: TrendingUp, gold: true },
-          { label: 'Total Records', value: filtered.length, icon: Users },
-          { label: 'Paid', value: paidCount, icon: CheckCircle2 },
-          { label: 'Pending', value: pendingCount, icon: Clock },
+          { label: 'Total Net', value: fmt(Math.round(totals.net)), icon: TrendingUp, gold: true },
+          { label: 'Basic Salary', value: fmt(Math.round(totals.basic)), icon: Banknote },
+          { label: 'Allowances', value: fmt(Math.round(totals.allowance)), icon: MapPin },
+          { label: 'Overtime', value: fmt(Math.round(totals.overtime)), icon: Clock },
+          { label: 'Deductions', value: fmt(Math.round(totals.deductions)), icon: Trash2, red: true },
         ].map((c, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className={`border ${c.gold ? 'bg-primary/10 border-primary/30' : 'bg-white/5 border-white/10'}`}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-1">
-                  <c.icon size={13} className={c.gold ? 'text-primary' : 'text-muted-foreground'} />
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">{c.label}</p>
+                  <c.icon size={13} className={c.gold ? 'text-primary' : c.red ? 'text-red-400' : 'text-muted-foreground'} />
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{c.label}</p>
                 </div>
-                <p className={`text-xl font-bold ${c.gold ? 'text-primary' : 'text-foreground'}`}>{c.value}</p>
+                <p className={`text-lg font-bold ${c.gold ? 'text-primary' : c.red ? 'text-red-400' : 'text-foreground'}`}>
+                  {c.value} <span className="text-[10px] font-normal opacity-50">EGP</span>
+                </p>
               </CardContent>
             </Card>
           </motion.div>
@@ -344,7 +366,7 @@ export default function Payroll() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((r, i) => {
+                {finalFiltered.map((r, i) => {
                   const net = r.basicSalary + r.siteAllowance + r.overtimePay - r.deductions;
                   return (
                     <motion.tr
@@ -393,10 +415,10 @@ export default function Payroll() {
               </TableBody>
             </Table>
           </div>
-          {filtered.length > 0 && (
+          {finalFiltered.length > 0 && (
             <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between text-xs text-muted-foreground">
-              <span>{filtered.length} record{filtered.length !== 1 ? 's' : ''}</span>
-              <span className="font-semibold text-primary">Total Net: EGP {fmt(Math.round(totalNet))}</span>
+              <span>{finalFiltered.length} record{finalFiltered.length !== 1 ? 's' : ''}</span>
+              <span className="font-semibold text-primary">Total Net: EGP {fmt(Math.round(totals.net))}</span>
             </div>
           )}
         </Card>

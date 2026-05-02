@@ -191,21 +191,7 @@ const unmapProject = (p: Partial<Project> & { id?: string }): any => {
   if (p.status !== undefined) out.status = p.status;
   if (p.startDate !== undefined) out.start_date = p.startDate;
   if (p.endDate !== undefined) out.end_date = p.endDate;
-  if (p.spent !== undefined) out.spent = p.spent;
-  if (p.location !== undefined) out.location = p.location;
-  if (p.description !== undefined) out.description = p.description;
-  if (p.projectValue !== undefined) out.project_value = p.projectValue;
   if (p.consultant !== undefined) out.consultant = p.consultant;
-  if (p.subcontractors !== undefined) out.subcontractors = p.subcontractors;
-  if (p.technicalSpecs !== undefined) out.technical_specs = p.technicalSpecs;
-  if (p.riskLevel !== undefined) out.risk_level = p.riskLevel;
-  if (p.insurancePolicyNumber !== undefined) out.insurance_policy_number = p.insurancePolicyNumber;
-  if (p.pmNotes !== undefined) out.pm_notes = p.pmNotes;
-  if (p.mepDetails !== undefined) out.mep_details = p.mepDetails;
-  if (p.civilWorks !== undefined) out.civil_works = p.civilWorks;
-  if (p.finishingStatus !== undefined) out.finishing_status = p.finishingStatus;
-  if (p.milestones !== undefined) out.milestones = p.milestones;
-  if (p.assignedStaffIds !== undefined) out.assigned_staff_ids = p.assignedStaffIds;
   return out;
 };
 
@@ -293,7 +279,6 @@ const unmapPayroll = (r: Partial<PayrollRecord>): any => {
   if (r.deductions !== undefined) out.deductions = r.deductions;
   if (r.netSalary !== undefined) out.net_salary = r.netSalary;
   if (r.status !== undefined) out.status = r.status;
-  if (r.notes !== undefined) out.notes = r.notes;
   return out;
 };
 

@@ -2,21 +2,25 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useAppContext } from '@/context/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Briefcase, Users, AlertTriangle, DollarSign } from 'lucide-react';
+import { 
+  Briefcase, Users, AlertTriangle, DollarSign, 
+  TrendingDown, ShieldAlert, Target, Activity, ExternalLink
+} from 'lucide-react';
 import { formatCurrency, getDocumentStatus } from '@/lib/utils';
+import { getGlobalFinancials } from '@/lib/financials';
 
 export default function Dashboard() {
-  const { projects, employees, documents } = useAppContext();
+  const { projects, employees, documents, payrollRecords } = useAppContext();
+  const financialData = getGlobalFinancials(projects, payrollRecords);
 
   // KPIs
   const activeProjects = projects.filter(p => p.status === 'In Progress').length;
   const totalStaff = employees.length;
   const expiringDocs = documents.filter(d => getDocumentStatus(d.expiryDate) === 'Expiring Soon').length;
-  
-  const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0);
-  const totalSpent = projects.reduce((sum, p) => sum + p.spent, 0);
-  const budgetUtil = totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : 0;
+  const totalPayroll = financialData.totalPayrollCost;
 
   // Chart Data
   const statusCounts = projects.reduce((acc, p) => {
@@ -74,7 +78,7 @@ export default function Dashboard() {
           { title: "Active Projects", value: activeProjects, icon: Briefcase, color: "text-blue-400" },
           { title: "Total Staff", value: totalStaff, icon: Users, color: "text-green-400" },
           { title: "Expiring Documents", value: expiringDocs, icon: AlertTriangle, color: "text-orange-400" },
-          { title: "Budget Utilization", value: `${budgetUtil}%`, icon: DollarSign, color: "text-primary" }
+          { title: "Total Payroll Cost", value: formatCurrency(totalPayroll), icon: TrendingDown, color: "text-primary" }
         ].map((kpi, i) => (
           <motion.div key={i} variants={itemVariants}>
             <Card className="bg-white/5 backdrop-blur-sm border-white/10 shadow-[0_0_20px_rgba(201,168,76,0.1)]">
@@ -89,6 +93,81 @@ export default function Dashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* Financial Control Panel */}
+      <motion.div variants={itemVariants}>
+        <Card className="bg-primary/5 border-primary/20 backdrop-blur-sm overflow-hidden relative">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
+            <ShieldAlert size={120} className="text-primary" />
+          </div>
+          <CardHeader className="border-b border-primary/10 bg-primary/5">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-primary" />
+                Financial Control & Leak Detection
+              </CardTitle>
+              <Badge variant="outline" className="border-primary/30 text-primary bg-primary/5">TRUTH-LOCK ACTIVE</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                  <Target className="h-3 w-3 text-primary" />
+                  Highest Cost Site
+                </p>
+                <p className="text-lg font-bold">{financialData.highestCostSite}</p>
+                <p className="text-[10px] text-muted-foreground">Based on current payroll</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                  <Activity className="h-3 w-3 text-red-400" />
+                  Projects at Risk
+                </p>
+                <p className="text-lg font-bold text-red-400">{financialData.projectsAtRisk}</p>
+                <p className="text-[10px] text-muted-foreground">Burn rate &gt; 70%</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                  <AlertTriangle className="h-3 w-3 text-orange-400" />
+                  Payroll Leaks
+                </p>
+                <p className="text-lg font-bold text-orange-400">{financialData.leaksCount}</p>
+                <p className="text-[10px] text-muted-foreground">Data integrity alerts</p>
+              </div>
+
+              <div className="flex items-end justify-end">
+                <Button variant="outline" size="sm" className="border-primary/20 hover:bg-primary/10 text-primary h-9 gap-2">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Detailed Report
+                </Button>
+              </div>
+            </div>
+            
+            {financialData.leaks.length > 0 && (
+              <div className="mt-6 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex items-center gap-2 text-orange-400 mb-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Critical Integrity Leaks</span>
+                </div>
+                <div className="space-y-2">
+                  {financialData.leaks.slice(0, 2).map(leak => (
+                    <div key={leak.id} className="text-xs text-muted-foreground flex items-center justify-between">
+                      <span>• {leak.description}</span>
+                      <Badge variant="outline" className="h-4 text-[9px] border-orange-500/30 text-orange-400">{leak.severity}</Badge>
+                    </div>
+                  ))}
+                  {financialData.leaks.length > 2 && (
+                    <p className="text-[10px] text-muted-foreground italic">+{financialData.leaks.length - 2} more alerts in detailed report</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         {/* Charts */}
@@ -209,7 +288,6 @@ export default function Dashboard() {
           </Card>
         </motion.div>
       </div>
-
     </motion.div>
   );
 }

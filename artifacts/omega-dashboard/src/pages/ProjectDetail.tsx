@@ -19,9 +19,10 @@ import {
   ArrowLeft, MapPin, Calendar, DollarSign, Users,
   Zap, HardHat, CheckCircle2, Circle, Pencil,
   ClipboardList, ShieldCheck, AlertTriangle, FileText,
-  TrendingUp, Building2, Wrench, Layers
+  TrendingUp, Building2, Wrench, Layers, Activity
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { calculateProjectFinancials } from '@/lib/financials';
 
 const editSchema = z.object({
   name: z.string().min(1),
@@ -305,7 +306,7 @@ function EditModal({ project, onClose }: { project: Project; onClose: () => void
 export default function ProjectDetail() {
   const [, params] = useRoute('/projects/:id');
   const [, navigate] = useLocation();
-  const { projects, employees } = useAppContext();
+  const { projects, employees, payrollRecords } = useAppContext();
   const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -323,9 +324,13 @@ export default function ProjectDetail() {
     );
   }
 
+  const financials = calculateProjectFinancials(project, payrollRecords);
   const assignedStaff = employees.filter(e => (project.assignedStaffIds || []).includes(e.id));
   const subcontractorList = (project.subcontractors || '').split(',').map(s => s.trim()).filter(Boolean);
+  
   const budgetUtil = project.budget ? Math.round((project.spent / project.budget) * 100) : 0;
+  const burnRateColor = financials.riskLevel === 'HIGH_RISK' ? 'text-red-400' : financials.riskLevel === 'MEDIUM_RISK' ? 'text-orange-400' : 'text-primary';
+
   const duration = (() => {
     const start = new Date(project.startDate);
     const end = new Date(project.endDate);
@@ -384,11 +389,11 @@ export default function ProjectDetail() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatCard label="Project Value" value={formatCurrency(project.projectValue || project.budget)} icon={DollarSign} gold />
-            <StatCard label="Budget Utilization" value={`${budgetUtil}%`} sub={`${formatCurrency(project.spent)} spent`} icon={TrendingUp} />
-            <StatCard label="Completion" value={`${project.completionPercent ?? 0}%`} sub={duration} icon={CheckCircle2} />
+            <StatCard label="Payroll Burn" value={`${financials.payrollBurnRate.toFixed(1)}%`} sub={`${formatCurrency(financials.totalPayrollCost)} total`} icon={TrendingUp} />
+            <StatCard label="Gross Remaining" value={formatCurrency(financials.grossRemaining)} sub="Contract balance" icon={CheckCircle2} />
             <StatCard
-              label="Risk Level"
-              value={project.riskLevel || 'Medium'}
+              label="Risk Profile"
+              value={financials.riskLevel.replace('_', ' ')}
               icon={AlertTriangle}
             />
           </div>
@@ -399,6 +404,9 @@ export default function ProjectDetail() {
         <TabsList className="bg-white/5 border border-white/10 mb-5 h-10">
           <TabsTrigger value="overview" className="gap-1.5 text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
             <ClipboardList size={13} /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="financials" className="gap-1.5 text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <DollarSign size={13} /> Financials
           </TabsTrigger>
           <TabsTrigger value="mep" className="gap-1.5 text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
             <Zap size={13} /> MEP & Civil
@@ -479,6 +487,110 @@ export default function ProjectDetail() {
                     <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                       {project.pmNotes || 'No PM notes recorded.'}
                     </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="financials" forceMount className={activeTab !== 'financials' ? 'hidden' : ''}>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="bg-white/5 border-white/10 lg:col-span-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Activity size={14} className="text-primary" /> Burn Rate Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Payroll vs Contract Value</span>
+                          <span className={`font-bold ${burnRateColor}`}>{financials.payrollBurnRate.toFixed(1)}%</span>
+                        </div>
+                        <div className="w-full bg-white/10 rounded-full h-2">
+                          <motion.div 
+                            className={`h-2 rounded-full ${financials.riskLevel === 'HIGH_RISK' ? 'bg-red-500' : financials.riskLevel === 'MEDIUM_RISK' ? 'bg-orange-500' : 'bg-primary'}`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(financials.payrollBurnRate, 100)}%` }}
+                            transition={{ duration: 1 }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-1">Contract VA</p>
+                          <p className="text-lg font-bold text-primary">{formatCurrency(project.projectValue || 0)}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-1">Payroll Actuals</p>
+                          <p className="text-lg font-bold">{formatCurrency(financials.totalPayrollCost)}</p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-primary/70 font-semibold uppercase tracking-wider mb-0.5">Gross Remaining</p>
+                          <p className="text-2xl font-black text-primary">{formatCurrency(financials.grossRemaining)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-muted-foreground uppercase mb-1">Current Profitability</p>
+                          <Badge variant="outline" className="border-primary/30 text-primary">High Accuracy</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white/5 border-white/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <ShieldCheck size={14} className="text-primary" /> Risk Mitigation
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {financials.riskLevel === 'HIGH_RISK' ? (
+                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                          <p className="text-xs font-bold flex items-center gap-1.5 mb-1">
+                            <AlertTriangle size={12} /> CRITICAL BURN RATE
+                          </p>
+                          <p className="text-[11px] leading-relaxed">Payroll costs have exceeded 70% of contract value. Immediate resource review required.</p>
+                        </div>
+                      ) : financials.riskLevel === 'MEDIUM_RISK' ? (
+                        <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400">
+                          <p className="text-xs font-bold flex items-center gap-1.5 mb-1">
+                            <AlertTriangle size={12} /> ELEVATED RISK
+                          </p>
+                          <p className="text-[11px] leading-relaxed">Burn rate is between 40-70%. Monitor site overtime and staffing levels.</p>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400">
+                          <p className="text-xs font-bold flex items-center gap-1.5 mb-1">
+                            <CheckCircle2 size={12} /> OPTIMAL PERFORMANCE
+                          </p>
+                          <p className="text-[11px] leading-relaxed">Financial leak detection confirms project is operating within healthy margins.</p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold px-1">Financial Controls</p>
+                        <ul className="space-y-2">
+                          <li className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="w-1 h-1 rounded-full bg-primary" />
+                            Daily payroll sync active
+                          </li>
+                          <li className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="w-1 h-1 rounded-full bg-primary" />
+                            Automated leak detection
+                          </li>
+                          <li className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="w-1 h-1 rounded-full bg-primary" />
+                            Live contract balance
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>

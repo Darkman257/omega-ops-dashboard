@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import * as z from 'zod';
+import { calculateProjectFinancials } from '@/lib/financials';
 
 const projectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -243,7 +244,7 @@ function EditModal({ project, onClose }: { project: Project; onClose: () => void
 }
 
 export default function Projects() {
-  const { projects, deleteProject } = useAppContext();
+  const { projects, payrollRecords, deleteProject } = useAppContext();
   const [, navigate] = useLocation();
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
@@ -289,128 +290,136 @@ export default function Projects() {
           className={view === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'space-y-3'}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
         >
-          {filtered.map((project, i) => (
-            <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              {view === 'grid' ? (
-                <Card
-                  className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-primary/40 transition-all h-full group relative cursor-pointer hover:bg-white/[0.07]"
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                  data-testid={`card-project-${project.id}`}
-                >
-                  <CardContent className="p-5">
-                    <div className="flex justify-between items-start mb-4 gap-2">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-base line-clamp-1 group-hover:text-primary transition-colors">{project.name}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-1">{project.client}</p>
+          {filtered.map((project, i) => {
+            const financials = calculateProjectFinancials(project, payrollRecords);
+            const riskColor = financials.riskLevel === 'HIGH_RISK' ? 'text-red-400' : financials.riskLevel === 'MEDIUM_RISK' ? 'text-orange-400' : 'text-green-400';
+
+            return (
+              <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                {view === 'grid' ? (
+                  <Card
+                    className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-primary/40 transition-all h-full group relative cursor-pointer hover:bg-white/[0.07]"
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                    data-testid={`card-project-${project.id}`}
+                  >
+                    <CardContent className="p-5">
+                      <div className="flex justify-between items-start mb-4 gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-base line-clamp-1 group-hover:text-primary transition-colors">{project.name}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-1">{project.client}</p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }}
+                            title="Expand"
+                          >
+                            <ArrowUpRight size={13} />
+                          </Button>
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={(e) => { e.stopPropagation(); setEditProject(project); }}
+                            data-testid={`button-edit-project-${project.id}`}
+                          >
+                            <Pencil size={13} />
+                          </Button>
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
+                            data-testid={`button-delete-project-${project.id}`}
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost" size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}`); }}
-                          title="Expand"
-                        >
-                          <ArrowUpRight size={13} />
-                        </Button>
-                        <Button
-                          variant="ghost" size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-primary"
-                          onClick={(e) => { e.stopPropagation(); setEditProject(project); }}
-                          data-testid={`button-edit-project-${project.id}`}
-                        >
+
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Payroll Cost</p>
+                          <p className="text-sm font-bold">{formatCurrency(financials.totalPayrollCost)}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Burn Rate</p>
+                          <p className={`text-sm font-bold ${riskColor}`}>{financials.payrollBurnRate.toFixed(1)}%</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Gross Remaining</span>
+                          <span className="text-xs font-semibold text-primary">{formatCurrency(financials.grossRemaining)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Timeline</span>
+                          <span className="text-xs">{formatDate(project.startDate)} – {formatDate(project.endDate)}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/10">
+                        <div className="flex justify-between items-center mb-2">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-0.5">Project Value</p>
+                            <p className="font-semibold text-primary text-sm">{formatCurrency(project.projectValue || project.budget)}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {project.riskLevel && (
+                              <Badge className={`${riskColors[project.riskLevel]} text-[10px] pointer-events-none`}>{project.riskLevel}</Badge>
+                            )}
+                            <Badge className={`${statusColors[project.status]} text-[10px] pointer-events-none`}>{project.status}</Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-white/10 rounded-full h-1.5">
+                            <div
+                              className="bg-primary h-1.5 rounded-full transition-all"
+                              style={{ width: `${project.completionPercent ?? 0}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-foreground">{project.completionPercent ?? 0}%</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card
+                    className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-primary/30 transition-colors group cursor-pointer"
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                  >
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">{project.name}</h3>
+                        <p className="text-xs text-muted-foreground">{project.client} · {project.location}</p>
+                      </div>
+                      <div className="w-32 hidden md:block text-right">
+                        <p className="text-[10px] text-muted-foreground uppercase">Burn Rate</p>
+                        <p className={`text-sm font-bold ${riskColor}`}>{financials.payrollBurnRate.toFixed(1)}%</p>
+                      </div>
+                      <div className="w-32">
+                        <p className="text-xs text-muted-foreground">Value</p>
+                        <p className="text-sm font-semibold text-primary">{formatCurrency(project.projectValue || project.budget)}</p>
+                      </div>
+                      <div className="w-16 text-center">
+                        <p className="text-xs text-muted-foreground">Done</p>
+                        <p className="text-sm font-bold">{project.completionPercent ?? 0}%</p>
+                      </div>
+                      <Badge className={`${statusColors[project.status]} pointer-events-none text-xs w-24 justify-center`}>{project.status}</Badge>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => setEditProject(project)}>
                           <Pencil size={13} />
                         </Button>
-                        <Button
-                          variant="ghost" size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
-                          data-testid={`button-delete-project-${project.id}`}
-                        >
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteProject(project.id)}>
                           <Trash2 size={13} />
                         </Button>
                       </div>
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Location</span>
-                        <span className="truncate max-w-[160px] text-right text-xs">{project.location}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Timeline</span>
-                        <span className="text-xs">{formatDate(project.startDate)} – {formatDate(project.endDate)}</span>
-                      </div>
-                      {project.consultant && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Consultant</span>
-                          <span className="truncate max-w-[160px] text-right text-xs">{project.consultant}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-3 border-t border-white/10">
-                      <div className="flex justify-between items-center mb-2">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-0.5">Project Value</p>
-                          <p className="font-semibold text-primary text-sm">{formatCurrency(project.projectValue || project.budget)}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {project.riskLevel && (
-                            <Badge className={`${riskColors[project.riskLevel]} text-[10px] pointer-events-none`}>{project.riskLevel}</Badge>
-                          )}
-                          <Badge className={`${statusColors[project.status]} text-[10px] pointer-events-none`}>{project.status}</Badge>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-white/10 rounded-full h-1.5">
-                          <div
-                            className="bg-primary h-1.5 rounded-full transition-all"
-                            style={{ width: `${project.completionPercent ?? 0}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-bold text-foreground">{project.completionPercent ?? 0}%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card
-                  className="bg-white/5 backdrop-blur-sm border-white/10 hover:border-primary/30 transition-colors group cursor-pointer"
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                >
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">{project.name}</h3>
-                      <p className="text-xs text-muted-foreground">{project.client} · {project.location}</p>
-                    </div>
-                    {project.consultant && (
-                      <div className="w-40 hidden md:block">
-                        <p className="text-xs text-muted-foreground">Consultant</p>
-                        <p className="text-sm truncate">{project.consultant}</p>
-                      </div>
-                    )}
-                    <div className="w-32">
-                      <p className="text-xs text-muted-foreground">Value</p>
-                      <p className="text-sm font-semibold text-primary">{formatCurrency(project.projectValue || project.budget)}</p>
-                    </div>
-                    <div className="w-16 text-center">
-                      <p className="text-xs text-muted-foreground">Done</p>
-                      <p className="text-sm font-bold">{project.completionPercent ?? 0}%</p>
-                    </div>
-                    <Badge className={`${statusColors[project.status]} pointer-events-none text-xs w-24 justify-center`}>{project.status}</Badge>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => setEditProject(project)}>
-                        <Pencil size={13} />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteProject(project.id)}>
-                        <Trash2 size={13} />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </motion.div>
-          ))}
+                    </CardContent>
+                  </Card>
+                )}
+              </motion.div>
+            );
+          })}
         </motion.div>
       )}
     </div>
