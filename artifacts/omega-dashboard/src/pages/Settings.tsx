@@ -1,9 +1,22 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Settings as SettingsIcon, Bell, Shield, Database, Palette } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Palette, Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { toast } from '@/hooks/use-toast';
 
 const Settings: React.FC = () => {
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    toast({
+      title: "Theme Changed",
+      description: `Interface switched to ${newTheme} mode.`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -40,7 +53,15 @@ const Settings: React.FC = () => {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground mb-4">Customize the dashboard theme and visual elements.</p>
-            <Button variant="outline" size="sm" className="w-full border-white/10 hover:bg-white/5">Customize</Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full border-white/10 hover:bg-white/5 flex items-center justify-center gap-2"
+              onClick={toggleTheme}
+            >
+              {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
+            </Button>
           </CardContent>
         </Card>
       </div>

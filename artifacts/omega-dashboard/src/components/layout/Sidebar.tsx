@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { useAppContext } from '@/context/AppContext';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -63,6 +64,7 @@ const NAV_GROUPS = [
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
+  const { currentUser } = useAppContext();
   const [location] = useLocation();
 
   return (
@@ -164,12 +166,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
             collapsed ? 'justify-center' : ''
           )}>
             <Avatar className="h-7 w-7 rounded-md border border-white/10 flex-shrink-0">
-              <AvatarFallback className="bg-primary/20 text-primary text-xs rounded-md font-bold">AD</AvatarFallback>
+              <AvatarFallback className="bg-primary/20 text-primary text-xs rounded-md font-bold">
+                {currentUser.name.split(' ').map(n => n[0]).join('')}
+              </AvatarFallback>
             </Avatar>
             {!collapsed && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate">Admin User</p>
-                <p className="text-[10px] text-muted-foreground truncate">Executive</p>
+                <p className="text-xs font-semibold text-foreground truncate">{currentUser.name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{currentUser.role}</p>
               </motion.div>
             )}
           </div>

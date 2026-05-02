@@ -114,6 +114,13 @@ interface AppState {
   housingUnits: HousingUnit[];
   totalLiquidity: number;
   loading: boolean;
+  currentUser: {
+    name: string;
+    role: string;
+    email: string;
+    department: string;
+    avatar?: string;
+  };
 }
 
 interface AppContextType extends AppState {
@@ -143,6 +150,7 @@ interface AppContextType extends AppState {
 
   setTotalLiquidity: (amount: number) => void;
   importData: (type: 'staff' | 'documents' | 'payroll', data: any[]) => void;
+  updateUser: (u: Partial<AppState['currentUser']>) => void;
 }
 
 // ─── DB → Frontend mappers ────────────────────────────────────────────────────
@@ -342,6 +350,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     housingUnits: [],
     totalLiquidity: Number(localStorage.getItem(LIQUIDITY_KEY) ?? 0),
     loading: true,
+    currentUser: JSON.parse(localStorage.getItem('omega-user') || JSON.stringify({
+      name: 'Admin User',
+      role: 'Executive Manager',
+      email: 'admin@omega.com',
+      department: 'Executive Office'
+    })),
   });
   const [siteFilter, setSiteFilter] = useState('');
 
@@ -620,6 +634,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const updateUser = (u: Partial<AppState['currentUser']>) => {
+    setState(prev => {
+      const newUser = { ...prev.currentUser, ...u };
+      localStorage.setItem('omega-user', JSON.stringify(newUser));
+      return { ...prev, currentUser: newUser };
+    });
+  };
+
   return (
     <AppContext.Provider value={{
       ...state,
@@ -632,6 +654,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addVehicle, updateVehicle, deleteVehicle,
       setTotalLiquidity,
       importData,
+      updateUser,
     }}>
       {children}
     </AppContext.Provider>
