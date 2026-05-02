@@ -48,6 +48,7 @@ export interface Employee {
   basicSalary: number;
   siteAllowance: number;
   currentSite: string;
+  internalCode: string;
   createdAt: string;
 }
 
@@ -77,6 +78,7 @@ export interface PayrollRecord {
   deductions: number;
   netSalary: number;
   status: 'Paid' | 'Pending' | 'On Hold';
+  internalCode: string;
   notes: string;
   createdAt: string;
 }
@@ -208,6 +210,7 @@ const mapEmployee = (row: any): Employee => ({
   basicSalary: Number(row.basic_salary ?? 0),
   siteAllowance: Number(row.site_allowance ?? 0),
   currentSite: row.current_site ?? '',
+  internalCode: row.internal_code ?? row.internalCode ?? '',
   createdAt: row.created_at ?? new Date().toISOString(),
 });
 
@@ -220,6 +223,7 @@ const unmapEmployee = (e: Partial<Employee>): any => {
   if (e.email !== undefined) out.email = e.email;
   if (e.status !== undefined) out.status = e.status.toLowerCase();
   if (e.basicSalary !== undefined) out.basic_salary = e.basicSalary;
+  if (e.internalCode !== undefined) out.internal_code = e.internalCode;
   return out;
 };
 
@@ -262,6 +266,7 @@ const mapPayroll = (row: any): PayrollRecord => ({
   deductions: Number(row.deductions ?? 0),
   netSalary: Number(row.net_salary ?? row.netSalary ?? 0),
   status: row.status ?? 'Pending',
+  internalCode: row.internal_code ?? row.internalCode ?? '',
   notes: row.notes ?? '',
   createdAt: row.created_at ?? new Date().toISOString(),
 });
@@ -279,6 +284,7 @@ const unmapPayroll = (r: Partial<PayrollRecord>): any => {
   if (r.deductions !== undefined) out.deductions = r.deductions;
   if (r.netSalary !== undefined) out.net_salary = r.netSalary;
   if (r.status !== undefined) out.status = r.status;
+  if (r.internalCode !== undefined) out.internal_code = r.internalCode;
   return out;
 };
 
@@ -557,8 +563,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         phone: String(pick(item, 'phone', 'mobile', 'الهاتف', 'tel') ?? ''),
         email: String(pick(item, 'email', 'البريد الإلكتروني') ?? ''),
         basic_salary: Number(pick(item, 'basicSalary', 'basic_salary', 'salary', 'الراتب الأساسي', 'الراتب') ?? 0),
+        internal_code: String(pick(item, 'internalCode', 'internal_code', 'code', 'id', 'الرقم الوظيفي', 'كود') ?? ''),
         status: 'active',
-      })).filter(r => r.full_name);
+      })).filter(r => r.full_name && r.internal_code);
 
       supabase.from('staff').insert(rows).select()
         .then(({ data: inserted, error }) => {
@@ -594,6 +601,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const deductions = Number(pick(item, 'deductions', 'deduction', 'خصومات', 'خصم') ?? 0);
         return {
           employee_name: String(pick(item, 'employeeName', 'employee_name', 'name', 'الاسم', 'اسم الموظف') ?? ''),
+          internal_code: String(pick(item, 'internalCode', 'internal_code', 'code', 'id', 'الرقم الوظيفي', 'كود') ?? ''),
           role: String(pick(item, 'role', 'الوظيفة', 'المسمى', 'title') ?? ''),
           department: String(pick(item, 'department', 'القسم') ?? ''),
           site_name: String(pick(item, 'siteName', 'site_name', 'site', 'الموقع', 'المشروع') ?? ''),
@@ -604,9 +612,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           deductions,
           net_salary: Math.max(0, basic + allowance + overtime - deductions),
           status: String(pick(item, 'status', 'الحالة') ?? 'Pending'),
-          notes: String(pick(item, 'notes', 'ملاحظات') ?? ''),
         };
-      }).filter(r => r.employee_name);
+      }).filter(r => r.employee_name && r.internal_code);
 
       supabase.from('payroll_records').insert(rows).select()
         .then(({ data: inserted, error }) => {

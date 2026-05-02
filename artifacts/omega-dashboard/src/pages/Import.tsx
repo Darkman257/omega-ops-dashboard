@@ -16,7 +16,7 @@ const TYPE_CONFIG: Record<ImportType, { label: string; icon: any; fields: string
   staff: {
     label: 'Staff Directory',
     icon: Users,
-    fields: ['name', 'role', 'department', 'phone', 'email', 'status'],
+    fields: ['internalCode', 'name', 'role', 'department', 'phone', 'email', 'status'],
     description: 'Import employee records including contact details and department'
   },
   documents: {
@@ -28,7 +28,7 @@ const TYPE_CONFIG: Record<ImportType, { label: string; icon: any; fields: string
   payroll: {
     label: 'Payroll & Attendance',
     icon: Banknote,
-    fields: ['employeeName', 'role', 'department', 'siteName', 'month', 'basicSalary', 'siteAllowance', 'overtimePay', 'deductions', 'status'],
+    fields: ['internalCode', 'employeeName', 'role', 'department', 'siteName', 'month', 'basicSalary', 'siteAllowance', 'overtimePay', 'deductions', 'status'],
     description: 'Import payroll records — Net Salary is auto-calculated from the imported fields'
   }
 };
@@ -45,6 +45,7 @@ function autoMap(headers: string[], type: ImportType): Record<string, string> {
       else if (l.includes('phone') || l.includes('tel') || l.includes('mobile') || l === 'رقم') matched = 'phone';
       else if (l.includes('email') || l.includes('mail') || l === 'بريد') matched = 'email';
       else if (l.includes('status') || l === 'حالة' || l.includes('active')) matched = 'status';
+      else if (l.includes('code') || l.includes('id') || l.includes('internal') || l === 'كود' || l === 'الرقم الوظيفي') matched = 'internalCode';
     } else if (type === 'documents') {
       if (l.includes('name') || l === 'الاسم' || l.includes('title') || l.includes('doc')) matched = 'name';
       else if (l.includes('type') || l === 'نوع' || l.includes('category')) matched = 'type';
@@ -61,6 +62,7 @@ function autoMap(headers: string[], type: ImportType): Record<string, string> {
       else if (l.includes('over') || l.includes('extra') || l === 'إضافي' || l === 'عمل إضافي' || l === 'أوفر تايم' || l === 'ساعات إضافية' || l === 'ot') matched = 'overtimePay';
       else if (l.includes('deduct') || l.includes('absent') || l === 'خصومات' || l === 'خصم' || l === 'الخصومات' || l === 'الخصم') matched = 'deductions';
       else if (l.includes('status') || l.includes('paid') || l === 'الحالة' || l === 'حالة الدفع') matched = 'status';
+      else if (l.includes('code') || l.includes('id') || l.includes('internal') || l === 'كود' || l === 'الرقم الوظيفي') matched = 'internalCode';
     }
     if (matched && TYPE_CONFIG[type].fields.includes(matched)) {
       map[i] = matched;
