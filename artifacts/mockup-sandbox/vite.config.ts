@@ -1,7 +1,12 @@
 // @ts-nocheck
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tailwindcss from "../../node_modules/.pnpm/@tailwindcss+vite@4.2.1_vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2_/node_modules/@tailwindcss/vite/dist/index.mjs";
+let tailwindcssPlugin;
+try {
+  tailwindcssPlugin = (await import("@tailwindcss/vite")).default;
+} catch (e) {
+  tailwindcssPlugin = (await import("../../node_modules/.pnpm/@tailwindcss+vite@4.2.1_vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2_/node_modules/@tailwindcss/vite/dist/index.mjs")).default;
+}
 import path from "path";
 // import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
@@ -15,7 +20,7 @@ export default defineConfig({
   plugins: [
     mockupPreviewPlugin(),
     react(),
-    tailwindcss(),
+    tailwindcssPlugin(),
     // runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
