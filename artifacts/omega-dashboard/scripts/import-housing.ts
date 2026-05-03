@@ -225,34 +225,57 @@ async function run() {
   let resErrors = 0;
   
   // Push units
+  // First, fetch existing units to avoid duplicates
+  const { data: existingDbUnits } = await supabase.from('housing_units').select('id, unit_number, building');
+  const existingMap = new Map();
+  if (existingDbUnits) {
+    for (const u of existingDbUnits) {
+      existingMap.set(`${u.building}_${u.unit_number}`, u.id);
+    }
+  }
+
   const unitVals = Array.from(units.values());
   for (const u of unitVals) {
-    const { error: uErr } = await supabase
-      .from('housing_units')
-      .upsert({
-        unit_number: u.unit_number,
-        building: u.building,
-        location: u.location,
-        notes: u.notes,
-        source_file: file.split('/').pop()
-      }, { onConflict: 'id' }); // Actually, we don't have a unique constraint on unit_number+building, so this might insert duplicates if run multiple times without care. 
-      // But for this pipeline, it's acceptable for initial ingestion.
-      
-    if (uErr) unitErrors++;
+    const key = `${u.building}_${u.unit_number}`;
+    if (existingMap.has(key)) {
+      // Update existing
+      const { error: uErr } = await supabase
+        .from('housing_units')
+        .update({
+          location: u.location,
+          notes: u.notes,
+          source_file: file.split('/').pop()
+        })
+        .eq('id', existingMap.get(key));
+      if (uErr) unitErrors++;
+    } else {
+      // Insert new
+      const { error: uErr } = await supabase
+        .from('housing_units')
+        .insert({
+          unit_number: u.unit_number,
+          building: u.building,
+          location: u.location,
+          notes: u.notes,
+          source_file: file.split('/').pop()
+        });
+      if (uErr) unitErrors++;
+    }
   }
   
-  // We need the unit IDs to link assignments, so let's fetch them back
-  const { data: dbUnits } = await supabase.from('housing_units').select('id, unit_number');
+  // Re-fetch to get all IDs including newly inserted ones
+  const { data: dbUnits } = await supabase.from('housing_units').select('id, unit_number, building');
   const unitIdMap = new Map();
   if (dbUnits) {
     for (const u of dbUnits) {
-      unitIdMap.set(u.unit_number, u.id);
+      unitIdMap.set(`${u.building}_${u.unit_number}`, u.id);
     }
   }
 
   // Push assignments
   for (const r of residents) {
-    const unitId = unitIdMap.get(r.unit_number);
+    // We need to match by building+unit, assuming 'ابراج دبى' for this specific file
+    const unitId = unitIdMap.get(`ابراج دبى_${r.unit_number}`);
     if (!unitId) continue;
     
     // Skip if no code and we only want strict linked, but we allow pending
