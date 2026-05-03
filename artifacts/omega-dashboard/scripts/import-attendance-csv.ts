@@ -23,7 +23,8 @@ const __dirname = path.dirname(__filename);
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 
-const args = process.argv.slice(2);
+// Filter out '--' injected by pnpm when calling: pnpm run script -- arg1 arg2
+const args = process.argv.slice(2).filter(a => a !== '--');
 
 if (args.length < 3) {
   console.error('\nUsage: tsx scripts/import-attendance-csv.ts <csv-file> <year> <month> [--push] [--force]');
