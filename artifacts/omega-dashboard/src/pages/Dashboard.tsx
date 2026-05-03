@@ -69,9 +69,10 @@ export default function Dashboard() {
       </div>
 
       {/* 2. MODE SWITCHER (CYBER HUD) */}
+      {/* ContractsFlow is isolated. Intended for AL-Sebaei Asset Hub migration, not Omega production scope. */}
       <div className="flex justify-center mb-8">
         <div className="bg-black/40 backdrop-blur-xl border border-white/10 p-1 rounded-full flex gap-1">
-          {(['OWNER', 'OPS', 'AI', 'CONTRACTS'] as const).map((m) => (
+          {(['OWNER', 'OPS', 'AI'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
