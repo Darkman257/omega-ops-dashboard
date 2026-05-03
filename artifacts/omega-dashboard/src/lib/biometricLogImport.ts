@@ -8,8 +8,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import {
-  normalizeBiometricLogs,
+import { normalizeBiometricLogs } from './biometricLogNormalizer.ts';
+import type {
   AttendanceLogRecord,
   BiometricAnomaly,
   NormalizerSummary

@@ -4,7 +4,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { parseBiometricFile, AttendanceLogRecord } from './biometricParser.ts';
+import { parseBiometricFile } from './biometricParser.ts';
+import type { AttendanceLogRecord } from './biometricParser.ts';
 
 export interface BiometricImportResult {
   batchId: string;
