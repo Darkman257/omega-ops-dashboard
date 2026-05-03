@@ -66,12 +66,26 @@ importAttendanceCSV(rawCSV, year, month, SUPABASE_URL, SUPABASE_KEY, push, force
     console.log('  IMPORT RESULT SUMMARY');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`  Batch ID:            ${result.batchId}`);
+    console.log(`  File hash:           ${result.fileHash.slice(0, 16)}...`);
+    console.log(`  Hash status:         ${result.hashStatus.toUpperCase()}`);
 
     if (result.aborted) {
-      console.warn(`\n  ⛔ IMPORT ABORTED: ${result.abortReason}`);
-      console.warn('  Run with --force to bypass.\n');
+      if (result.hashStatus === 'same_hash') {
+        console.warn(`\n  ⛔ Same batch already imported — file unchanged.`);
+        console.warn(`     To update with a new file, ensure the CSV is different and re-run.`);
+        console.warn(`     To force re-import identical data, use --force.\n`);
+      } else {
+        console.warn(`\n  ⛔ IMPORT ABORTED: ${result.abortReason}`);
+        console.warn('  Run with --force to bypass.\n');
+      }
       process.exit(0);
       return;
+    }
+
+    if (result.hashStatus === 'hash_changed') {
+      console.log(`\n  ℹ Batch updated with new data (file changed).`);
+    } else if (result.hashStatus === 'new') {
+      console.log(`\n  ✓ New batch — first import for this period.`);
     }
 
     console.log(`  Staff parsed:        ${result.staffParsed}`);

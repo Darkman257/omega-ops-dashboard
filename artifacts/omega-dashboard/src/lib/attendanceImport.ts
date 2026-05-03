@@ -5,7 +5,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
 import { normalizeAttendanceCSV, AttendanceStatus } from './attendanceNormalizer';
+
+// ─── Compute SHA-256 fingerprint of raw CSV content ──────────────────────────
+function computeFileHash(content: string): string {
+  return createHash('sha256').update(content, 'utf8').digest('hex');
+}
 
 export interface ImportResult {
   staffParsed: number;
@@ -16,8 +22,10 @@ export interface ImportResult {
   warnings: string[];
   errors: string[];
   batchId: string;
+  fileHash: string;
   aborted: boolean;
   abortReason?: string;
+  hashStatus: 'new' | 'same_hash' | 'hash_changed' | 'dry_run' | 'forced';
 }
 
 // ─── Supabase row types (DB schema contract) ──────────────────────────────────
@@ -36,6 +44,7 @@ interface AttendanceRow {
   raw_value: string;
   source: string;
   import_batch_id: string;
+  file_hash: string;
 }
 
 // ─── Build ISO date from month + day number ───────────────────────────────────
@@ -58,6 +67,7 @@ export async function importAttendanceCSV(
 ): Promise<ImportResult> {
   // Deterministic batch ID: same month always gets same ID so duplicates can be detected
   const batchId = `import_${year}_${String(month).padStart(2, '0')}`;
+  const fileHash = computeFileHash(rawCSV);
 
   const result: ImportResult = {
     staffParsed: 0,
@@ -68,7 +78,9 @@ export async function importAttendanceCSV(
     warnings: [],
     errors: [],
     batchId,
-    aborted: false
+    fileHash,
+    aborted: false,
+    hashStatus: 'new'
   };
 
   // Step 1: Normalize
@@ -79,17 +91,21 @@ export async function importAttendanceCSV(
   result.warnings = normalized.warnings;
 
   if (!push) {
-    console.log('[DRY RUN] Normalization complete. Use --push to write to Supabase.');
+    console.log(`[DRY RUN] Hash: ${fileHash}. Use --push to write to Supabase.`);
+    result.hashStatus = 'dry_run';
     return result;
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // ─── Deduplication guard ──────────────────────────────────────────────────
-  if (!force) {
+  // ─── Hash-aware deduplication guard ──────────────────────────────────────
+  if (force) {
+    console.log(`[FORCE MODE] Bypassing dedup check. Hash: ${fileHash}`);
+    result.hashStatus = 'forced';
+  } else {
     const { data: existingBatch, error: checkError } = await supabase
       .from('attendance')
-      .select('import_batch_id')
+      .select('file_hash')
       .eq('import_batch_id', batchId)
       .limit(1);
 
@@ -103,16 +119,29 @@ export async function importAttendanceCSV(
     }
 
     if (existingBatch && existingBatch.length > 0) {
-      const reason = `Batch "${batchId}" already imported. Use --force to re-import.`;
-      console.warn('[ABORTED]', reason);
-      result.aborted = true;
-      result.abortReason = reason;
-      result.warnings.push(reason);
-      result.warningsCount = result.warnings.length;
-      return result;
+      const storedHash: string = existingBatch[0].file_hash ?? '';
+
+      if (storedHash === fileHash) {
+        // ✗ Identical file — block
+        const reason = `Same batch already imported (batch: "${batchId}", hash: ${fileHash.slice(0, 12)}...). No changes detected.`;
+        console.warn('[ABORTED]', reason);
+        result.aborted = true;
+        result.abortReason = reason;
+        result.hashStatus = 'same_hash';
+        result.warnings.push(reason);
+        result.warningsCount = result.warnings.length;
+        return result;
+      } else {
+        // ✓ Different file — allow with warning
+        const warn = `Batch "${batchId}" exists but file has changed (old: ${storedHash.slice(0, 12)}..., new: ${fileHash.slice(0, 12)}...). Importing updated data.`;
+        console.warn('[HASH CHANGED]', warn);
+        result.warnings.push(warn);
+        result.warningsCount = result.warnings.length;
+        result.hashStatus = 'hash_changed';
+      }
+    } else {
+      result.hashStatus = 'new';
     }
-  } else {
-    console.log(`[FORCE MODE] Skipping deduplication check for batch: ${batchId}`);
   }
   // Step 2: Upsert staff records
   const staffRows: StaffRow[] = normalized.staff.map(s => ({
@@ -140,7 +169,7 @@ export async function importAttendanceCSV(
 
   // Step 3: Upsert attendance records
   const attendanceRows: AttendanceRow[] = normalized.attendance
-    .filter(a => a.status !== 'off') // skip day-off rows to reduce noise
+    .filter(a => a.status !== 'off')
     .map(a => ({
       employee_id: a.employee_id,
       employee_name: a.name,
@@ -148,7 +177,8 @@ export async function importAttendanceCSV(
       status: a.status,
       raw_value: a.raw_value,
       source: 'excel',
-      import_batch_id: batchId
+      import_batch_id: batchId,
+      file_hash: fileHash
     }));
 
   // Insert in chunks of 500 to avoid payload limits
