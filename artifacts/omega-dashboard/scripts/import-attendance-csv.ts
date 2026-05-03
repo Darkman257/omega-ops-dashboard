@@ -1,0 +1,87 @@
+#!/usr/bin/env tsx
+// ─── Attendance CSV Import CLI ────────────────────────────────────────────────
+// Usage:
+//   pnpm --filter @workspace/omega-dashboard exec tsx scripts/import-attendance-csv.ts \
+//     ./data/april-attendance.csv 2026 4
+//
+//   Add --push to actually write to Supabase (default is dry-run):
+//   ... ./data/april-attendance.csv 2026 4 --push
+// ─────────────────────────────────────────────────────────────────────────────
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { importAttendanceCSV } from '../src/lib/attendanceImport';
+import * as dotenv from 'dotenv';
+
+// Load .env from the omega-dashboard directory
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+
+const args = process.argv.slice(2);
+
+if (args.length < 3) {
+  console.error('\nUsage: tsx scripts/import-attendance-csv.ts <csv-file> <year> <month> [--push]');
+  console.error('Example: tsx scripts/import-attendance-csv.ts ./data/april.csv 2026 4 --push\n');
+  process.exit(1);
+}
+
+const csvPath = args[0];
+const year = parseInt(args[1], 10);
+const month = parseInt(args[2], 10);
+const push = args.includes('--push');
+
+if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+  console.error('\nInvalid year or month. Year must be 4 digits, month must be 1-12.\n');
+  process.exit(1);
+}
+
+if (!fs.existsSync(csvPath)) {
+  console.error(`\nFile not found: ${csvPath}\n`);
+  process.exit(1);
+}
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('\nMissing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env\n');
+  process.exit(1);
+}
+
+const rawCSV = fs.readFileSync(csvPath, 'utf-8');
+
+console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+console.log(`  OMEGA ATTENDANCE IMPORT PIPELINE`);
+console.log(`  File : ${csvPath}`);
+console.log(`  Period: ${year}/${String(month).padStart(2, '0')}`);
+console.log(`  Mode : ${push ? 'PUSH → Supabase' : 'DRY RUN (no writes)'}`);
+console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
+importAttendanceCSV(rawCSV, year, month, SUPABASE_URL, SUPABASE_KEY, push)
+  .then(result => {
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('  IMPORT RESULT SUMMARY');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`  Staff parsed:        ${result.staffParsed}`);
+    console.log(`  Attendance parsed:   ${result.attendanceParsed}`);
+    console.log(`  Staff upserted:      ${result.staffUpserted}`);
+    console.log(`  Attendance upserted: ${result.attendanceUpserted}`);
+    console.log(`  Warnings:            ${result.warningsCount}`);
+    console.log(`  Errors:              ${result.errors.length}`);
+
+    if (result.warnings.length > 0) {
+      console.log('\n  WARNINGS:');
+      result.warnings.forEach(w => console.log(`   ⚠  ${w}`));
+    }
+
+    if (result.errors.length > 0) {
+      console.log('\n  ERRORS (REQUIRES MANUAL REVIEW):');
+      result.errors.forEach(e => console.log(`   ✗  ${e}`));
+      process.exit(1);
+    }
+
+    console.log('\n  ✓ Pipeline complete.\n');
+  })
+  .catch(err => {
+    console.error('\n[FATAL ERROR]', err);
+    process.exit(1);
+  });

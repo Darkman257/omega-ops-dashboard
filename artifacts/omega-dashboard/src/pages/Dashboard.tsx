@@ -32,6 +32,7 @@ import {
   Cell
 } from 'recharts';
 import { useAppContext } from '@/context/AppContext';
+import { useAttendanceMetrics } from '@/hooks/useAttendanceMetrics';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { calculateLivingSystem, NeuralNode, LivingSystemData } from '@/lib/financials';
@@ -60,8 +61,13 @@ export default function Dashboard() {
 
   const living = useMemo(() => calculateLivingSystem(projects, payrollRecords, employees), [projects, payrollRecords, employees]);
 
+  const attendanceMetrics = useAttendanceMetrics();
+
   const totalEmployees = (employees || []).length;
-  const activeEmployees = (employees || []).filter(e => e.status === 'Active').length || 0;
+  // Prefer live attendance table data; fall back to staff.status count
+  const activeEmployees = attendanceMetrics.hasLiveData
+    ? attendanceMetrics.present + attendanceMetrics.nightShift + attendanceMetrics.offsite
+    : (employees || []).filter(e => e.status === 'Active').length || 0;
   const activeVehicles = (vehicles || []).filter(v => v.status === 'Active' || v.status === 'In Service').length || 0;
   const pendingApprovals = (documents || []).filter(d => d.expiryDate && new Date(d.expiryDate) < new Date()).length || 0;
   const cashBurnToday = (payrollRecords || []).reduce((sum, r) => sum + (r.netSalary || 0), 0) / 30;
