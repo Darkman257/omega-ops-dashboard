@@ -94,32 +94,9 @@ export default function Dashboard() {
         <ContractsFlow />
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch mb-12">
-            {/* Left Column: Core Signal Monitoring */}
-            <div className="lg:col-span-5 h-full">
-              <OpsSignalPanel 
-                verdict={living.verdict}
-                stabilityValue={living.verdict.state === 'BLEEDING' ? 35 : living.verdict.state === 'WARNING' ? 65 : 96}
-              />
-            </div>
-
-            {/* Right Column: Reasoning and SVG Neural Map */}
-            <div className="lg:col-span-7 flex flex-col justify-between space-y-6 h-full">
-              <NeuralReasoningCard 
-                what={living.aiInsight.what}
-                why={living.aiInsight.why}
-                impact={living.aiInsight.impact}
-                actionsNow={living.actionsNow}
-              />
-              <div className="flex-1 min-h-[300px]">
-                <NeuralMapPanel nodes={living.neural.nodes} />
-              </div>
-            </div>
-          </div>
-
-          {/* OMEGA WAR ROOM LAYER */}
-          <div className="space-y-6 mt-12 border-t border-white/10 pt-12 relative z-10">
-            <div className="flex items-center gap-3 mb-6">
+          {/* 1. OMEGA WAR ROOM LAYER (NOW TOP) */}
+          <div className="space-y-6 relative z-10">
+            <div className="flex items-center gap-3 mb-4">
               <Activity className="text-primary" size={24} />
               <h2 className="text-2xl font-black tracking-widest uppercase text-foreground neon-text-gold">
                 Omega War Room Layer
@@ -127,7 +104,7 @@ export default function Dashboard() {
             </div>
             
             {/* Top Row: KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <OperationalKpiCard 
                 title="Active Machinery" 
                 value={living.summary.activeSites * 12 || 142} 
@@ -152,7 +129,7 @@ export default function Dashboard() {
             </div>
 
             {/* Bottom Row: Weather & Feed */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               <div className="lg:col-span-4 h-full">
                 <WeatherRiskWidget 
                   siteName="NEOM Sector 4"
@@ -168,22 +145,46 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 5. BOTTOM COMMAND STRIPS (REACTIVE) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+          {/* 2. BOTTOM COMMAND STRIPS (REACTIVE) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
             {[
               { label: 'Lost Today', value: living.summary.lostToday, sub: 'Leak Estimate', icon: TrendingDown, color: '#EF4444', spark: [300, 500, 400, 700, 600, 1000] },
               { label: 'Workforce', value: living.summary.workforce.present, sub: 'Active Now', icon: Users, color: '#C9A84C', spark: [10, 15, 12, 18, 17, 20] },
               { label: 'Active Sites', value: living.summary.activeSites, sub: 'Running Now', icon: Target, color: '#10B981', spark: [2, 3, 3, 4, 4, 5] },
               { label: 'Critical Risks', value: living.summary.criticalRisks, sub: 'Action Required', icon: ShieldAlert, color: '#F59E0B', spark: [0, 1, 2, 1, 2, 3] }
             ].map((stat, i) => (
-              <motion.div key={i} variants={container} className="p-6 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-center group hover:border-primary/50 transition-all">
+              <motion.div key={i} variants={container} className="p-4 rounded-xl bg-white/5 border border-white/10 flex justify-between items-center group hover:border-primary/50 transition-all">
                 <div>
                   <div className="text-[10px] font-black uppercase text-muted-foreground mb-1">{stat.label}</div>
-                  <div className="text-2xl font-black">{stat.value}</div>
+                  <div className="text-xl font-black">{stat.value}</div>
                 </div>
-                <stat.icon className={`${stat.color} group-hover:scale-125 transition-transform`} size={24} />
+                <stat.icon className={`${stat.color} group-hover:scale-125 transition-transform`} size={20} />
               </motion.div>
             ))}
+          </div>
+
+          {/* 3. OPS INTELLIGENCE SIGNAL SECTION (NOW BELOW) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch border-t border-white/10 pt-8 mt-8">
+            {/* Left Column: Core Signal Monitoring */}
+            <div className="lg:col-span-5 h-full">
+              <OpsSignalPanel 
+                verdict={living.verdict}
+                stabilityValue={living.verdict.state === 'BLEEDING' ? 35 : living.verdict.state === 'WARNING' ? 65 : 96}
+              />
+            </div>
+
+            {/* Right Column: Reasoning and SVG Neural Map */}
+            <div className="lg:col-span-7 flex flex-col justify-between space-y-5 h-full">
+              <NeuralReasoningCard 
+                what={living.aiInsight.what}
+                why={living.aiInsight.why}
+                impact={living.aiInsight.impact}
+                actionsNow={living.actionsNow}
+              />
+              <div className="flex-1 min-h-[260px]">
+                <NeuralMapPanel nodes={living.neural.nodes} />
+              </div>
+            </div>
           </div>
         </>
       )}
