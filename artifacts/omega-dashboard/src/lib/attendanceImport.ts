@@ -15,6 +15,9 @@ export interface ImportResult {
   warningsCount: number;
   warnings: string[];
   errors: string[];
+  batchId: string;
+  aborted: boolean;
+  abortReason?: string;
 }
 
 // ─── Supabase row types (DB schema contract) ──────────────────────────────────
@@ -50,8 +53,12 @@ export async function importAttendanceCSV(
   month: number,
   supabaseUrl: string,
   supabaseKey: string,
-  push: boolean = false
+  push: boolean = false,
+  force: boolean = false
 ): Promise<ImportResult> {
+  // Deterministic batch ID: same month always gets same ID so duplicates can be detected
+  const batchId = `import_${year}_${String(month).padStart(2, '0')}`;
+
   const result: ImportResult = {
     staffParsed: 0,
     attendanceParsed: 0,
@@ -59,7 +66,9 @@ export async function importAttendanceCSV(
     attendanceUpserted: 0,
     warningsCount: 0,
     warnings: [],
-    errors: []
+    errors: [],
+    batchId,
+    aborted: false
   };
 
   // Step 1: Normalize
@@ -75,8 +84,36 @@ export async function importAttendanceCSV(
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
-  const batchId = `import_${year}_${String(month).padStart(2, '0')}_${Date.now()}`;
 
+  // ─── Deduplication guard ──────────────────────────────────────────────────
+  if (!force) {
+    const { data: existingBatch, error: checkError } = await supabase
+      .from('attendance')
+      .select('import_batch_id')
+      .eq('import_batch_id', batchId)
+      .limit(1);
+
+    if (checkError) {
+      const msg = `Deduplication check failed: ${checkError.message}`;
+      console.error('[ERROR]', msg);
+      result.errors.push(msg);
+      result.aborted = true;
+      result.abortReason = msg;
+      return result;
+    }
+
+    if (existingBatch && existingBatch.length > 0) {
+      const reason = `Batch "${batchId}" already imported. Use --force to re-import.`;
+      console.warn('[ABORTED]', reason);
+      result.aborted = true;
+      result.abortReason = reason;
+      result.warnings.push(reason);
+      result.warningsCount = result.warnings.length;
+      return result;
+    }
+  } else {
+    console.log(`[FORCE MODE] Skipping deduplication check for batch: ${batchId}`);
+  }
   // Step 2: Upsert staff records
   const staffRows: StaffRow[] = normalized.staff.map(s => ({
     internal_code: s.employee_id,
