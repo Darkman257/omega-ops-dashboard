@@ -12,7 +12,8 @@
     "import-attendance-force": "node --env-file=.env --experimental-strip-types scripts/import-attendance-csv.ts --force",
     "import-biometric": "node --env-file=.env --experimental-strip-types scripts/import-biometric-logs.ts",
     "verify-attendance": "node --env-file=.env --experimental-strip-types scripts/verify-attendance.ts",
-    "schema-report": "node --env-file=.env --experimental-strip-types scripts/schema-report.ts"
+    "schema-report": "node --env-file=.env --experimental-strip-types scripts/schema-report.ts",
+    "reconcile": "node --env-file=.env --experimental-strip-types scripts/reconciliation-audit.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
