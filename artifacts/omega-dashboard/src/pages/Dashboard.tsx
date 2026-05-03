@@ -36,6 +36,9 @@ import { RealtimeOpsFeed } from '@/reference-patterns/omega/RealtimeOpsFeed';
 import { OperationalKpiCard } from '@/reference-patterns/omega/OperationalKpiCard';
 import ContractsFlow from '@/components/ContractsFlow';
 import SystemStabilityBar from '@/components/SystemStabilityBar';
+import OpsSignalPanel from '@/components/OpsSignalPanel';
+import NeuralReasoningCard from '@/components/NeuralReasoningCard';
+import NeuralMapPanel from '@/components/NeuralMapPanel';
 
 const container = {
   hidden: { opacity: 0 },
@@ -91,122 +94,26 @@ export default function Dashboard() {
         <ContractsFlow />
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* 3. SYSTEM STABILITY (LEFT) */}
-            <motion.div variants={container} className="lg:col-span-5 flex flex-col items-center justify-center space-y-8 py-12">
-              <Card className="bg-black/60 backdrop-blur-3xl border-white/10 w-full max-w-sm neon-border overflow-hidden p-8 flex flex-col items-center justify-center space-y-6">
-                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">
-                  System Stability / استقرار النظام
-                </div>
-                <div className="flex items-center gap-6">
-                  <SystemStabilityBar value={living.verdict.state === 'BLEEDING' ? 35 : living.verdict.state === 'WARNING' ? 65 : 96} />
-                  <div className="text-5xl font-black text-foreground tracking-tighter">
-                    {living.verdict.state === 'BLEEDING' ? 35 : living.verdict.state === 'WARNING' ? 65 : 96}%
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm font-black text-foreground uppercase tracking-widest">{living.verdict.label}</div>
-                </div>
-              </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch mb-12">
+            {/* Left Column: Core Signal Monitoring */}
+            <div className="lg:col-span-5 h-full">
+              <OpsSignalPanel 
+                verdict={living.verdict}
+                stabilityValue={living.verdict.state === 'BLEEDING' ? 35 : living.verdict.state === 'WARNING' ? 65 : 96}
+              />
+            </div>
 
-              <div className="text-center space-y-4">
-                <h2 className="text-4xl font-black tracking-tighter text-foreground uppercase">{living.verdict.explanationAr}</h2>
-                <div className="flex gap-4 justify-center">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl">
-                    <Radio size={14} className="text-primary animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Signal Stable</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl">
-                    <Network size={14} className="text-emerald-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Flow: Normal</span>
-                  </div>
-                </div>
+            {/* Right Column: Reasoning and SVG Neural Map */}
+            <div className="lg:col-span-7 flex flex-col justify-between space-y-6 h-full">
+              <NeuralReasoningCard 
+                what={living.aiInsight.what}
+                why={living.aiInsight.why}
+                impact={living.aiInsight.impact}
+                actionsNow={living.actionsNow}
+              />
+              <div className="flex-1 min-h-[300px]">
+                <NeuralMapPanel nodes={living.neural.nodes} />
               </div>
-            </motion.div>
-
-            {/* 4. AI INSIGHTS & NEURAL MAP (RIGHT) */}
-            <div className="lg:col-span-7 space-y-8">
-              {/* AI EXPLANATION BOX */}
-              <Card className="bg-black/60 backdrop-blur-3xl border-white/10 neon-border overflow-hidden relative">
-                <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                <CardContent className="p-8 space-y-8">
-                  <div className="flex items-center gap-3">
-                    <BrainCircuit className="text-primary" size={24} />
-                    <span className="text-xs font-black uppercase tracking-[0.4em]">Neural Reasoning Engine</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="space-y-2">
-                      <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">What / الموقف</div>
-                      <p className="text-lg font-bold text-foreground leading-tight neon-text-gold">{living.aiInsight.what}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Why / السبب</div>
-                      <p className="text-sm font-medium text-foreground/80 leading-relaxed italic">"{living.aiInsight.why}"</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="text-[10px] font-black text-red-500 uppercase tracking-widest">Next Impact / التأثير</div>
-                      <p className="text-sm font-black text-red-500 leading-tight uppercase">{living.aiInsight.impact}</p>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-white/5 flex gap-4">
-                    {living.actionsNow.map((action: string, i: number) => (
-                      <button key={i} className="flex-1 bg-white/5 hover:bg-primary hover:text-black border border-white/10 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-                        {action}
-                      </button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* NEURAL MAP VISUALIZATION */}
-              <Card className="bg-black/40 border-white/10 glass-card h-[400px]">
-                <CardContent className="p-6 h-full flex flex-col">
-                  <h3 className="text-xs font-black uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <Radio size={16} className="text-primary" /> System Neural Map
-                  </h3>
-                  <div className="flex-1 relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                        <XAxis type="number" dataKey="x" hide domain={[-300, 300]} />
-                        <YAxis type="number" dataKey="y" hide domain={[-300, 300]} />
-                        <ZAxis type="number" dataKey="z" range={[100, 1000]} />
-                        <ReTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ background: '#000', border: 'none' }} />
-                        <Scatter name="Sites" data={living.neural.nodes.map(n => ({ ...n, z: 500 }))} fill="#C9A84C">
-                          {living.neural.nodes.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={entry.status === 'CRITICAL' ? '#EF4444' : entry.status === 'WARNING' ? '#F59E0B' : '#C9A84C'} 
-                            />
-                          ))}
-                        </Scatter>
-                      </ScatterChart>
-                    </ResponsiveContainer>
-                    
-                    {/* SVG Edge Layer */}
-                    <svg className="absolute inset-0 pointer-events-none w-full h-full opacity-20">
-                      {living.neural.edges.map((edge, i) => {
-                        const from = living.neural.nodes.find(n => n.id === edge.from);
-                        const to = living.neural.nodes.find(n => n.id === edge.to);
-                        if (!from || !to) return null;
-                        return (
-                          <motion.line
-                            key={i}
-                            x1="50%" y1="50%"
-                            x2={`${50 + (to.x / 6)}%`} y2={`${50 + (to.y / 6)}%`}
-                            stroke={edge.status === 'BROKEN' ? '#EF4444' : '#C9A84C'}
-                            strokeWidth={1}
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                          />
-                        );
-                      })}
-                    </svg>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
 
