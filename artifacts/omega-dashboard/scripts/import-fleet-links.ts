@@ -231,26 +231,69 @@ async function run() {
   console.log(`\n  Pushing to database...`);
   
   let errors = 0;
+  let upserted = 0;
+
+  // First fetch existing vehicles to manually map them
+  const { data: existingDbVehicles } = await supabase.from('vehicles').select('id, plate_number');
+  const existingMap = new Map();
+  if (existingDbVehicles) {
+    for (const v of existingDbVehicles) {
+      if (v.plate_number) {
+        existingMap.set(v.plate_number.trim().toLowerCase(), v.id);
+      }
+    }
+  }
+
   for (const v of parsedVehicles) {
-    const { error: upsertErr } = await supabase
-      .from('vehicles')
-      .upsert({
-        plate_number: v.plate_number,
-        car_name: v.car_name,
-        driver: v.driver,
-        driver_code: v.driver_code,
-        source_file: v.source_file,
-        assignment_status: v.assignment_status,
-        status: 'Active'
-      }, { onConflict: 'plate_number' });
-      
-    if (upsertErr) errors++;
+    const key = (v.plate_number || '').trim().toLowerCase();
+    
+    if (existingMap.has(key)) {
+      // Update existing record
+      const { error: updateErr } = await supabase
+        .from('vehicles')
+        .update({
+          car_name: v.car_name,
+          driver: v.driver,
+          driver_code: v.driver_code,
+          source_file: v.source_file,
+          assignment_status: v.assignment_status,
+          status: 'Active'
+        })
+        .eq('id', existingMap.get(key));
+        
+      if (updateErr) {
+        console.error(`  ✗ Error updating ${v.plate_number}: ${updateErr.message}`);
+        errors++;
+      } else {
+        upserted++;
+      }
+    } else {
+      // Insert new record
+      const { error: insertErr } = await supabase
+        .from('vehicles')
+        .insert({
+          plate_number: v.plate_number,
+          car_name: v.car_name,
+          driver: v.driver,
+          driver_code: v.driver_code,
+          source_file: v.source_file,
+          assignment_status: v.assignment_status,
+          status: 'Active'
+        });
+        
+      if (insertErr) {
+        console.error(`  ✗ Error inserting ${v.plate_number}: ${insertErr.message}`);
+        errors++;
+      } else {
+        upserted++;
+      }
+    }
   }
   
   console.log(`\n${SEP}`);
   console.log(`  IMPORT COMPLETE`);
-  console.log(`  Upserted: ${parsedVehicles.length - errors}`);
-  console.log(`  Errors:   ${errors}`);
+  console.log(`  Upserted/Updated: ${upserted}`);
+  console.log(`  Errors:           ${errors}`);
   console.log(`${SEP}\n`);
 }
 
