@@ -4,7 +4,7 @@ import { useAppContext } from '@/context/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Building2, Users, MapPin, Search, BedDouble, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Building2, Users, MapPin, Search, BedDouble, CheckCircle2, AlertCircle, Edit2, Plus, X, MoreVertical } from 'lucide-react';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -88,11 +88,16 @@ export default function Facilities() {
           {filtered.map(unit => {
             const occupancyPct = unit.capacity > 0 ? Math.round((unit.occupants / unit.capacity) * 100) : 0;
             return (
-              <Card key={unit.id} className="bg-white/5 border-white/10 backdrop-blur-sm hover:border-white/20 transition-colors">
+              <Card key={unit.id} className="bg-white/5 border-white/10 backdrop-blur-sm hover:border-white/20 transition-colors group">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <CardTitle className="text-base">{unit.unitNumber}</CardTitle>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {unit.unitNumber}
+                        <button className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-white" onClick={() => alert('Edit Unit modal placeholder')}>
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                      </CardTitle>
                       {unit.location && (
                         <div className="flex items-center gap-1 mt-1 text-muted-foreground text-xs">
                           <MapPin className="h-3 w-3" />
@@ -118,9 +123,14 @@ export default function Facilities() {
                   </div>
                   {unit.residents && unit.residents.length > 0 && (
                     <div className="mt-4 pt-3 border-t border-white/5 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Residents</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Residents</p>
+                        <button className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => alert('Add Resident placeholder')}>
+                          <Plus className="h-3 w-3" /> Add
+                        </button>
+                      </div>
                       {unit.residents.map((r, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm bg-white/5 rounded px-2 py-1.5">
+                        <div key={i} className="group/res flex items-center justify-between text-sm bg-white/5 rounded px-2 py-1.5">
                           <div className="flex items-center gap-2">
                             <span>{r.name}</span>
                             {r.code && (
@@ -129,12 +139,24 @@ export default function Facilities() {
                               </Badge>
                             )}
                           </div>
-                          {r.status === 'pending_review' && (
-                            <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] px-1 uppercase">Pending</Badge>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {r.status === 'pending_review' && (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] px-1 uppercase">Pending</Badge>
+                            )}
+                            <button className="text-muted-foreground hover:text-red-400 opacity-0 group-hover/res:opacity-100 transition-opacity" onClick={() => alert(`Remove ${r.name} from unit`)}>
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
+                  )}
+                  {(!unit.residents || unit.residents.length === 0) && (
+                     <div className="mt-4 pt-3 border-t border-white/5 flex justify-center">
+                        <button className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1" onClick={() => alert('Add Resident placeholder')}>
+                          <Plus className="h-3 w-3" /> Add Resident
+                        </button>
+                     </div>
                   )}
                   {unit.notes && (
                     <p className="text-xs text-muted-foreground border-t border-white/5 pt-2">{unit.notes}</p>

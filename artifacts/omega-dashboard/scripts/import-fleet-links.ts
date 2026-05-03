@@ -45,6 +45,9 @@ interface ParsedVehicle {
   driver_code: string | null;
   source_file: string;
   assignment_status: string;
+  route_name?: string;
+  daily_rate?: string;
+  passenger_count?: number;
 }
 
 async function run() {
@@ -120,68 +123,127 @@ async function run() {
       }
 
       // Process the extracted 2D array data
-      for (let i = 1; i < data.length; i++) { // Skip header
-        const row = data[i];
-        if (!row || row.length === 0) continue;
-        
-        // For 'أسماء سيارات المشروع وسائقينها.xlsx' ->
-        // "م","نوع السيارة","إسم السائق","رقم السيارة","ملاحظات"
-        //  0        1               2             3           4
-        const carName = String(row[1] || '').trim();
-        const driver = String(row[2] || '').trim();
-        const plate = String(row[3] || '').trim();
-        
-        // For 'حصر سيارات ايجار مشروع دبي.xlsx' ->
-        // "م","اسماء الموظفين","الوظيفة","النوع","الفئه اليومية"
-        //  0        1               2       3         4
-        // (Wait, the data audit showed this file has driver in col 1, car in col 3, plate usually empty or in col 0? Let's just try both patterns if needed)
-        // Let's make it robust by checking if row[1] contains 'سوزوكي' or if row[3] contains 'سوزوكي' etc.
-        // For simplicity, let's extract generically based on headers, but for now we'll do:
-        let actualCarName = carName;
-        let actualDriver = driver;
-        let actualPlate = plate;
-        
-        if (!actualCarName && !actualDriver && !actualPlate) continue;
-        // if file is rental cars:
-        if (fileName.includes('ايجار')) {
-          actualDriver = String(row[1] || '').trim();
-          actualCarName = String(row[3] || '').trim();
-          actualPlate = `RENTAL_${Math.floor(Math.random()*10000)}`; // Rentals might not list plates here
-        }
+      if (fileName.includes('ايجار')) {
+        let currentRouteName = '';
+        let currentRouteId = '';
+        let currentCarName = '';
+        let currentRate = '';
+        let currentDriver = '';
+        let passengersCount = 0;
+        let routeDriverCode: string | null = null;
+        let status = 'pending_review';
 
-        // Clean headers and bad data
-        const ignoreWords = ['لا يوجد', 'الاسم', 'إسم السائق', 'اسماء الموظفين', 'الوظيفة'];
-        if (!actualDriver || ignoreWords.includes(actualDriver)) continue;
+        const saveCurrentRoute = () => {
+          if (currentRouteId && passengersCount > 0) {
+            parsedVehicles.push({
+              car_name: currentCarName || 'Unknown Vehicle',
+              plate_number: currentRouteId, // Route ID used as plate
+              driver: currentDriver || 'Route Driver',
+              driver_code: routeDriverCode,
+              source_file: fileName,
+              assignment_status: status,
+              route_name: currentRouteName,
+              daily_rate: currentRate,
+              passenger_count: passengersCount
+            });
+          }
+        };
+
+        for (let i = 0; i < data.length; i++) {
+          const row = data[i];
+          if (!row || row.length === 0) continue;
           
-          let code: string | null = null;
-          let status = 'pending_review';
+          const col0 = String(row[0] || '').trim();
+          const col1 = String(row[1] || '').trim();
+          const col2 = String(row[2] || '').trim();
+          const col3 = String(row[3] || '').trim();
+          const col4 = String(row[4] || '').trim();
           
-          if (driver) {
-            const driverLower = driver.toLowerCase();
-            // Try exact match
+          if (col0.includes('خط') || col1.includes('خط')) {
+            saveCurrentRoute();
+            currentRouteName = col0.includes('خط') ? col0 : col1;
+            passengersCount = 0;
+            currentCarName = '';
+            currentRate = '';
+            currentDriver = '';
+            routeDriverCode = null;
+            status = 'pending_review';
+            
+            if (currentRouteName.includes('المنيب')) currentRouteId = 'ROUTE_RING_MOUNIB';
+            else if (currentRouteName.includes('قليوب')) currentRouteId = 'ROUTE_QALYUB_RING';
+            else if (currentRouteName.includes('العاصمة') && !currentRouteName.includes('30')) currentRouteId = 'ROUTE_BADR_CAPITAL_14';
+            else if (currentRouteName.includes('30')) currentRouteId = 'ROUTE_BADR_CAPITAL_30';
+            else if (currentRouteName.includes('بدر')) currentRouteId = 'ROUTE_BADR_MORNING';
+            else currentRouteId = `ROUTE_${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+            continue;
+          }
+          
+          if (col1.includes('اسماء') || col0 === 'م' || col1 === '') continue;
+          
+          passengersCount++;
+          
+          if (!currentCarName && col3) currentCarName = col3;
+          if (!currentRate && col4) currentRate = col4;
+          
+          if (col2 === 'سائق' || col1.includes('سائق')) {
+            currentDriver = col1;
+            const driverLower = currentDriver.toLowerCase();
             if (staffMap.has(driverLower)) {
-              code = staffMap.get(driverLower)!;
+              routeDriverCode = staffMap.get(driverLower)!;
               status = 'linked';
             } else {
-              // Try substring match
               for (const [staffName, staffCode] of staffMap.entries()) {
                 if (staffName.includes(driverLower) || driverLower.includes(staffName)) {
-                  code = staffCode;
+                  routeDriverCode = staffCode;
                   status = 'linked';
                   break;
                 }
               }
             }
           }
+        }
+        saveCurrentRoute();
+      } else {
+        // Normal fleet vehicles
+        for (let i = 1; i < data.length; i++) { // Skip header
+          const row = data[i];
+          if (!row || row.length === 0) continue;
           
+          const carName = String(row[1] || '').trim();
+          const driver = String(row[2] || '').trim();
+          const plate = String(row[3] || '').trim();
+          
+          if (!carName && !driver && !plate) continue;
+  
+          const ignoreWords = ['لا يوجد', 'الاسم', 'إسم السائق', 'اسماء الموظفين', 'الوظيفة'];
+          if (!driver || ignoreWords.includes(driver)) continue;
+            
+          let code: string | null = null;
+          let status = 'pending_review';
+          
+          const driverLower = driver.toLowerCase();
+          if (staffMap.has(driverLower)) {
+            code = staffMap.get(driverLower)!;
+            status = 'linked';
+          } else {
+            for (const [staffName, staffCode] of staffMap.entries()) {
+              if (staffName.includes(driverLower) || driverLower.includes(staffName)) {
+                code = staffCode;
+                status = 'linked';
+                break;
+              }
+            }
+          }
+            
           parsedVehicles.push({
-            car_name: actualCarName || 'Unknown Vehicle',
-            plate_number: actualPlate || `NO_PLATE_${Math.floor(Math.random()*1000)}`,
-            driver: actualDriver,
+            car_name: carName || 'Unknown Vehicle',
+            plate_number: plate || `NO_PLATE_${Math.floor(Math.random()*1000)}`,
+            driver: driver,
             driver_code: code,
             source_file: fileName,
             assignment_status: status
           });
+        }
       }
     } else {
       console.log(`  ✗ Unsupported file format: ${fileName} (Use .xlsx)`);
@@ -257,7 +319,10 @@ async function run() {
           driver_code: v.driver_code,
           source_file: v.source_file,
           assignment_status: v.assignment_status,
-          status: 'Active'
+          status: 'Active',
+          route_name: v.route_name || null,
+          daily_rate: v.daily_rate || null,
+          passenger_count: v.passenger_count || 0
         })
         .eq('id', existingMap.get(key));
         
@@ -278,7 +343,10 @@ async function run() {
           driver_code: v.driver_code,
           source_file: v.source_file,
           assignment_status: v.assignment_status,
-          status: 'Active'
+          status: 'Active',
+          route_name: v.route_name || null,
+          daily_rate: v.daily_rate || null,
+          passenger_count: v.passenger_count || 0
         });
         
       if (insertErr) {

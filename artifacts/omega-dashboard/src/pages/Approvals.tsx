@@ -23,6 +23,8 @@ interface Approval {
   reviewed_date: string;
   notes: string;
   amount: number;
+  linked_table?: string;
+  linked_record_id?: string;
 }
 
 const itemVariants = {
@@ -52,13 +54,23 @@ export default function Approvals() {
       });
   }, []);
 
-  const updateStatus = async (id: string, newStatus: string) => {
+  const updateStatus = async (id: string, newStatus: string, linkedTable?: string, linkedId?: string) => {
     const { error } = await supabase.from('approvals').update({
       status: newStatus,
       reviewed_date: new Date().toISOString().split('T')[0],
+      reviewed_by: 'Admin'
     }).eq('id', id);
+    
     if (!error) {
       setApprovals(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
+      
+      if (newStatus === 'Approved' && linkedTable && linkedId) {
+        if (linkedTable === 'housing_assignments') {
+           await supabase.from('housing_assignments').update({ assignment_status: 'linked' }).eq('id', linkedId);
+        } else if (linkedTable === 'vehicles') {
+           await supabase.from('vehicles').update({ assignment_status: 'linked' }).eq('id', linkedId);
+        }
+      }
     }
   };
 
@@ -186,7 +198,7 @@ export default function Approvals() {
                             size="sm"
                             variant="ghost"
                             className="h-7 px-2 text-green-400 hover:text-green-300 hover:bg-green-500/10 text-xs"
-                            onClick={() => updateStatus(approval.id, 'Approved')}
+                            onClick={() => updateStatus(approval.id, 'Approved', approval.linked_table, approval.linked_record_id)}
                           >
                             Approve
                           </Button>
@@ -194,7 +206,7 @@ export default function Approvals() {
                             size="sm"
                             variant="ghost"
                             className="h-7 px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs"
-                            onClick={() => updateStatus(approval.id, 'Rejected')}
+                            onClick={() => updateStatus(approval.id, 'Rejected', approval.linked_table, approval.linked_record_id)}
                           >
                             Reject
                           </Button>

@@ -460,7 +460,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const refresh = async () => {
     setState(prev => ({ ...prev, loading: true }));
 
-    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData, contractsData, paymentsData] = await Promise.all([
+    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData, contractsData, paymentsData, housingAssignmentsData] = await Promise.all([
       safeQuery('projects', 'created_at'),
       safeQuery('staff'),
       safeQuery('vehicles', 'created_at'),
@@ -469,6 +469,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       safeQuery('housing_units'),
       safeQuery('contracts'),
       safeQuery('payments'),
+      safeQuery('housing_assignments'),
     ]);
 
     // robust fallback to localStorage if Supabase returns nothing or hasn't had the tables created yet
@@ -488,6 +489,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       } catch (e) { console.warn(e); }
     }
 
+    const mappedUnits = housingData.map(mapHousingUnit).map(unit => {
+      const unitAssignments = housingAssignmentsData.filter((a: any) => String(a.housing_unit_id) === String(unit.id));
+      const residents = unitAssignments.map((a: any) => ({
+        name: a.employee_name || 'Unknown',
+        code: a.employee_code || undefined,
+        status: a.assignment_status || 'linked'
+      }));
+      return {
+        ...unit,
+        residents,
+        occupants: residents.length // Computed count
+      };
+    });
+
     setState(prev => ({
       ...prev,
       projects: projectsData.map(mapProject),
@@ -495,7 +510,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       vehicles: vehiclesData.map(mapVehicle),
       payrollRecords: payrollData.map(mapPayroll),
       documents: docsData.map(mapDocument),
-      housingUnits: housingData.map(mapHousingUnit),
+      housingUnits: mappedUnits,
       contracts: finalContracts,
       payments: finalPayments,
       loading: false,
