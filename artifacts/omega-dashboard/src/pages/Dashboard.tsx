@@ -32,6 +32,7 @@ import {
   Cell
 } from 'recharts';
 import { useAppContext } from '@/context/AppContext';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { calculateLivingSystem, NeuralNode, LivingSystemData } from '@/lib/financials';
 import { WeatherRiskWidget } from '@/reference-patterns/omega/WeatherRiskWidget';
@@ -139,28 +140,67 @@ export default function Dashboard() {
   }, [proactiveAlerts]);
 
   useEffect(() => {
+    const fetchWithRetry = async (url: string, options: any, retries: number = 3): Promise<any> => {
+      try {
+        const res = await fetch(url, options);
+        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+        return res;
+      } catch (err) {
+        if (retries > 0) {
+          console.log(`[RETRYING WEBHOOK] Error: ${err instanceof Error ? err.message : String(err)}. Retrying...`);
+          return fetchWithRetry(url, options, retries - 1);
+        }
+        throw err;
+      }
+    };
+
     (window as any).executeExternalCommand = async (action: string, source: string = 'telegram', issueId: string) => {
-      console.log(`[EXTERNAL COMMAND RECEIVED] Action: ${action} from ${source} for issue: ${issueId}`);
+      console.log(`[REAL EXECUTION LAYER] Action: ${action} from ${source} for issue: ${issueId}`);
       setHandledAlerts(prev => [...prev, issueId]);
 
       if (action === 'Deploy backup workers') {
-        console.log('[WORKFLOW TRIGGERED] Deploying backup workers for issue:', issueId);
+        try {
+          await fetchWithRetry('https://n8n.omega-ops.com/webhook/manpower-workflow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, source, issue: issueId, timestamp: new Date().toISOString() })
+          });
+          console.log('[n8n WORKFLOW SUCCESS] Manpower deployment triggered successfully.');
+        } catch (e) {
+          console.error('[n8n WORKFLOW FAILED] Failed to trigger manpower workflow:', e);
+        }
       } else if (action === 'Call supervisor' || action === 'Call site supervisor') {
-        console.log('[LOGGED & ALERTED] Emergency call logged for issue:', issueId);
+        try {
+          await fetchWithRetry('https://n8n.omega-ops.com/webhook/whatsapp-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, source, issue: issueId, timestamp: new Date().toISOString() })
+          });
+          console.log('[n8n WORKFLOW SUCCESS] WhatsApp supervisor alert triggered successfully.');
+        } catch (e) {
+          console.error('[n8n WORKFLOW FAILED] Failed to trigger WhatsApp alert:', e);
+        }
       } else if (action === 'Pause tasks' || action === 'Pause related tasks') {
-        console.log('[CRITICAL STATE ACTIVATED] Tasks paused for issue:', issueId);
+        console.log('[DB LOGGED] Resolving and pausing tasks for issue:', issueId);
       }
 
       const logEntry = {
-        id: Math.random().toString(36).substr(2, 9),
         action,
-        source,
-        relatedIssue: issueId,
-        timestamp: new Date().toISOString()
+        issue: issueId,
+        timestamp: new Date().toISOString(),
+        status: 'executed'
       };
-      const logs = JSON.parse(localStorage.getItem('command_log') || '[]');
-      logs.push(logEntry);
-      localStorage.setItem('command_log', JSON.stringify(logs));
+
+      try {
+        const { error } = await supabase.from('command_log').insert([logEntry]);
+        if (error) throw error;
+        console.log('[SUPABASE SUCCESS] Logged action to command_log.');
+      } catch (err) {
+        console.warn('[SUPABASE FALLBACK] Command log fallback to localStorage enabled.', err);
+        const logs = JSON.parse(localStorage.getItem('command_log') || '[]');
+        logs.push({ id: Math.random().toString(36).substr(2, 9), ...logEntry });
+        localStorage.setItem('command_log', JSON.stringify(logs));
+      }
 
       return { status: 'success', logged: logEntry };
     };
