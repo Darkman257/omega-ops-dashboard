@@ -1,27 +1,37 @@
 -- ─── Migration 003: Biometric Attendance Logs ────────────────────────────────
--- Stores raw parsed biometric punch events (IN / OUT per employee per day).
--- Separate from the monthly attendance sheet table.
+-- Stores individual IN / OUT events from biometric machine exports.
+-- Each row = one event (one IN or one OUT) for one employee.
+-- Completely separate from the monthly attendance summary table.
 -- Run in Supabase SQL Editor. Safe to re-run (idempotent).
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- Drop old schema if it exists with wrong columns (schema change)
+-- If you already ran the old version, run this first:
+-- DROP TABLE IF EXISTS attendance_logs;
+
 CREATE TABLE IF NOT EXISTS attendance_logs (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id    TEXT NOT NULL,
-  log_date       DATE NOT NULL,
-  timestamp_in   TIMESTAMP WITH TIME ZONE,
-  timestamp_out  TIMESTAMP WITH TIME ZONE,
-  duration_hours NUMERIC(5, 2),         -- out - in in hours, null if incomplete
-  anomaly        TEXT,                   -- 'missing_in' | 'missing_out' | null
-  source         TEXT DEFAULT 'biometric',
-  import_batch_id TEXT,
-  created_at     TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  UNIQUE(employee_id, log_date, import_batch_id)
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id     TEXT NOT NULL,
+  employee_name   TEXT,
+  log_date        DATE NOT NULL,
+  timestamp       TIMESTAMP WITH TIME ZONE NOT NULL,
+  type            TEXT NOT NULL CHECK (type IN ('in', 'out')),
+  raw_times       TEXT[],                  -- all raw punch times for this day (audit)
+  source          TEXT DEFAULT 'biometric',
+  import_batch_id TEXT NOT NULL,
+  created_at      TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_logs_date        ON attendance_logs(log_date);
-CREATE INDEX IF NOT EXISTS idx_logs_employee    ON attendance_logs(employee_id);
-CREATE INDEX IF NOT EXISTS idx_logs_batch       ON attendance_logs(import_batch_id);
+-- Unique: one IN and one OUT per employee per day per batch
+CREATE UNIQUE INDEX IF NOT EXISTS attendance_logs_unique_event
+  ON attendance_logs (employee_id, timestamp, type, import_batch_id);
+
+-- Lookup indexes
+CREATE INDEX IF NOT EXISTS attendance_logs_employee_date_idx
+  ON attendance_logs (employee_id, log_date);
+
+CREATE INDEX IF NOT EXISTS attendance_logs_batch_idx
+  ON attendance_logs (import_batch_id);
 
 -- RLS
 ALTER TABLE attendance_logs ENABLE ROW LEVEL SECURITY;

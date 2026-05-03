@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "import-attendance": "node --env-file=.env --experimental-strip-types scripts/import-attendance-csv.ts",
     "import-attendance-force": "node --env-file=.env --experimental-strip-types scripts/import-attendance-csv.ts --force",
-    "import-biometric": "node --env-file=.env --experimental-strip-types scripts/import-biometric.ts",
+    "import-biometric": "node --env-file=.env --experimental-strip-types scripts/import-biometric-logs.ts",
     "verify-attendance": "node --env-file=.env --experimental-strip-types scripts/verify-attendance.ts"
   },
   "devDependencies": {
