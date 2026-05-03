@@ -56,6 +56,7 @@ export default function Dashboard() {
   const { projects, payrollRecords, employees, vehicles, documents } = useAppContext();
   const [mode, setMode] = useState<'OWNER' | 'OPS' | 'AI' | 'CONTRACTS'>('OWNER');
   const [handledAlerts, setHandledAlerts] = useState<string[]>([]);
+  const [autonomyMode, setAutonomyMode] = useState<'OFF' | 'ASSISTED' | 'AUTO_SAFE'>('AUTO_SAFE');
 
   const living = useMemo(() => calculateLivingSystem(projects, payrollRecords, employees), [projects, payrollRecords, employees]);
 
@@ -139,6 +140,23 @@ export default function Dashboard() {
     });
   }, [proactiveAlerts]);
 
+  const classifyRisk = (action: string): 'LOW' | 'MEDIUM' | 'HIGH' => {
+    const lowRiskActions = [
+      'Send WhatsApp', 'Send Telegram', 'Log command',
+      'Create follow-up', 'Mark alert', 'Retry', 'Generate summary',
+      'supervisor', 'site supervisor'
+    ];
+    if (lowRiskActions.some(act => action.toLowerCase().includes(act.toLowerCase()))) return 'LOW';
+    
+    const highRiskActions = [
+      'Spend', 'Assign', 'Remove', 'Payroll', 'Delete', 'Close financial',
+      'Schema', 'Client', 'Owner'
+    ];
+    if (highRiskActions.some(act => action.toLowerCase().includes(act.toLowerCase()))) return 'HIGH';
+    
+    return 'MEDIUM';
+  };
+
   useEffect(() => {
     const fetchWithRetry = async (url: string, options: any, retries: number = 3): Promise<any> => {
       try {
@@ -156,6 +174,33 @@ export default function Dashboard() {
 
     (window as any).executeExternalCommand = async (action: string, source: string = 'telegram', issueId: string) => {
       console.log(`[REAL EXECUTION LAYER] Action: ${action} from ${source} for issue: ${issueId}`);
+      const risk = classifyRisk(action);
+      const approvalRequired = risk !== 'LOW';
+
+      if (approvalRequired && autonomyMode !== 'OFF') {
+        console.log(`[APPROVAL REQUIRED] Action risk is ${risk}. Requesting manual/assisted approval...`);
+        try {
+          await fetchWithRetry('https://n8n.omega-ops.com/webhook/approval-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action,
+              source,
+              issue: issueId,
+              risk,
+              approval_required: true,
+              autonomy_mode: autonomyMode,
+              timestamp: new Date().toISOString()
+            })
+          });
+          console.log('[APPROVAL REQUEST SENT] Triggered n8n approval webhook.');
+        } catch (e) {
+          console.error('[APPROVAL REQUEST FAILED]', e);
+        }
+        return { status: 'waiting_approval', action, risk };
+      }
+
+      // Action is LOW risk or we're in fully AUTO_SAFE mode
       setHandledAlerts(prev => [...prev, issueId]);
 
       if (action === 'Deploy backup workers') {
@@ -188,13 +233,17 @@ export default function Dashboard() {
         action,
         issue: issueId,
         timestamp: new Date().toISOString(),
-        status: 'executed'
+        status: approvalRequired ? 'pending' : 'executed',
+        autonomy_mode: autonomyMode,
+        risk_level: risk,
+        approval_required: approvalRequired,
+        executed_by: autonomyMode === 'AUTO_SAFE' && !approvalRequired ? 'system' : 'user'
       };
 
       try {
         const { error } = await supabase.from('command_log').insert([logEntry]);
         if (error) throw error;
-        console.log('[SUPABASE SUCCESS] Logged action to command_log.');
+        console.log('[SUPABASE SUCCESS] Logged action to command_log with autonomy metadata.');
       } catch (err) {
         console.warn('[SUPABASE FALLBACK] Command log fallback to localStorage enabled.', err);
         const logs = JSON.parse(localStorage.getItem('command_log') || '[]');
@@ -221,7 +270,18 @@ export default function Dashboard() {
     return () => {
       window.fetch = originalFetch;
     };
-  }, []);
+  }, [autonomyMode]);
+
+  const dailySummary = useMemo(() => {
+    return {
+      alertsTriggered: proactiveAlerts.length,
+      actionsExecuted: handledAlerts.length,
+      actionsWaitingApproval: autonomyMode === 'AUTO_SAFE' ? proactiveAlerts.filter(a => a.severity === 'CRITICAL').length : 0,
+      cashBurn: Math.round(cashBurnToday).toLocaleString() + ' EGP',
+      workforceStatus: `${activeEmployees} active / ${totalEmployees} total`,
+      fleetStatus: `${activeVehicles} active units`
+    };
+  }, [proactiveAlerts, handledAlerts, autonomyMode, cashBurnToday, activeEmployees, totalEmployees, activeVehicles]);
 
   return (
     <motion.div 
