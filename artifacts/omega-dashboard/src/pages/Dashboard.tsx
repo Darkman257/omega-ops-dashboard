@@ -66,26 +66,73 @@ export default function Dashboard() {
   const pendingApprovals = (documents || []).filter(d => d.expiryDate && new Date(d.expiryDate) < new Date()).length || 0;
   const cashBurnToday = (payrollRecords || []).reduce((sum, r) => sum + (r.netSalary || 0), 0) / 30;
 
+  const context = useMemo(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const isWeekend = day === 5 || day === 6; // Mid-east weekend Fri & Sat or standard
+    const hour = today.getHours();
+
+    return {
+      dayType: isWeekend ? 'weekend' : 'weekday',
+      shiftType: hour >= 6 && hour < 18 ? 'day' : 'night',
+      projectPhase: 'execution',
+      weatherCondition: 'normal'
+    };
+  }, []);
+
+  const alertConfig = useMemo(() => ({
+    workers: context.dayType === 'weekday' ? 65 : 40,
+    fleet: context.projectPhase === 'mobilization' ? 60 : 40,
+    burnRate: 35000,
+    allowBurnSpike: false
+  }), [context]);
+
   const proactiveAlerts = useMemo(() => {
     const alerts: { id: string; label: string; severity: 'NORMAL' | 'WARNING' | 'CRITICAL'; time: string }[] = [];
     const laborRate = totalEmployees > 0 ? (activeEmployees / totalEmployees) * 100 : 0;
     const inactiveVehicleRate = vehicles.length > 0 ? ((vehicles.length - activeVehicles) / vehicles.length) * 100 : 0;
 
-    if (laborRate < 70) {
-      alerts.push({ id: 'labor', label: `Low labor participation: ${laborRate.toFixed(1)}%`, severity: 'WARNING', time: 'Just now' });
+    const workersThreshold = alertConfig.workers;
+    if (laborRate < workersThreshold) {
+      alerts.push({
+        id: 'labor',
+        label: `Workers threshold exceeded. Rate: ${laborRate.toFixed(1)}%. [Rule: workers, Threshold: <${workersThreshold}%, Context: ${context.dayType}]`,
+        severity: 'WARNING',
+        time: 'Just now'
+      });
     }
-    if (inactiveVehicleRate > 30) {
-      alerts.push({ id: 'fleet', label: `Fleet inactivity exceeds 30% (${inactiveVehicleRate.toFixed(1)}%)`, severity: 'WARNING', time: 'Just now' });
+
+    const fleetThreshold = alertConfig.fleet;
+    if (inactiveVehicleRate > fleetThreshold) {
+      alerts.push({
+        id: 'fleet',
+        label: `Fleet inactivity exceeds limit. Rate: ${inactiveVehicleRate.toFixed(1)}%. [Rule: fleet, Threshold: >${fleetThreshold}%, Context: ${context.projectPhase}]`,
+        severity: 'WARNING',
+        time: 'Just now'
+      });
     }
+
     if (pendingApprovals > 0) {
-      alerts.push({ id: 'approvals', label: `${pendingApprovals} unresolved alerts or expirations detected`, severity: 'CRITICAL', time: 'Just now' });
+      alerts.push({
+        id: 'approvals',
+        label: `${pendingApprovals} unresolved alerts or expirations detected. [Rule: compliance, Threshold: >0, Context: normal]`,
+        severity: 'CRITICAL',
+        time: 'Just now'
+      });
     }
-    if (cashBurnToday > 15000) {
-      alerts.push({ id: 'finance', label: `Financial: Burn rate high (${Math.round(cashBurnToday).toLocaleString()} EGP)`, severity: 'WARNING', time: 'Just now' });
+
+    const burnThreshold = alertConfig.burnRate;
+    if (cashBurnToday > burnThreshold && !alertConfig.allowBurnSpike) {
+      alerts.push({
+        id: 'finance',
+        label: `Daily financial burn high. Value: ${Math.round(cashBurnToday).toLocaleString()} EGP. [Rule: finance, Threshold: >${burnThreshold} EGP, Context: normal]`,
+        severity: 'WARNING',
+        time: 'Just now'
+      });
     }
 
     return alerts.filter(a => !handledAlerts.includes(a.id));
-  }, [totalEmployees, activeEmployees, vehicles.length, activeVehicles, pendingApprovals, cashBurnToday, handledAlerts]);
+  }, [totalEmployees, activeEmployees, vehicles.length, activeVehicles, pendingApprovals, cashBurnToday, handledAlerts, context, alertConfig]);
 
   const overallSeverity = useMemo(() => {
     if (proactiveAlerts.some(a => a.severity === 'CRITICAL')) return 'CRITICAL';
