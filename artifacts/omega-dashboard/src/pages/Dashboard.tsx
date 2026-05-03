@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShieldAlert, 
@@ -48,6 +48,9 @@ const container = {
   show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
+const lastSentAlertsCache: Record<string, number> = {};
+
+
 export default function Dashboard() {
   const { projects, payrollRecords, employees, vehicles, documents } = useAppContext();
   const [mode, setMode] = useState<'OWNER' | 'OPS' | 'AI' | 'CONTRACTS'>('OWNER');
@@ -94,6 +97,30 @@ export default function Dashboard() {
   const coreBorder = living.verdict.state === 'BLEEDING' ? 'border-red-500/50' : 
                     living.verdict.state === 'WARNING' ? 'border-amber-500/50' : 
                     'border-emerald-500/50';
+
+  useEffect(() => {
+    proactiveAlerts.forEach((alert) => {
+      if (alert.severity === 'CRITICAL') {
+        const now = Date.now();
+        const lastSent = lastSentAlertsCache[alert.id] || 0;
+        // Debounce: 10 mins = 600,000 milliseconds
+        if (now - lastSent > 600000) {
+          lastSentAlertsCache[alert.id] = now;
+          fetch('https://n8n.omega-ops.com/webhook/critical-alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              issue: alert.label,
+              impact: 'Critical operational risk detected in real-time monitoring',
+              actionRequired: 'Please review compliance/alerts immediately on the dashboard.',
+              severity: 'CRITICAL',
+              timestamp: new Date().toISOString()
+            })
+          }).catch((err) => console.error('Error triggering alert webhook:', err));
+        }
+      }
+    });
+  }, [proactiveAlerts]);
 
   return (
     <motion.div 
