@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Network, Activity } from 'lucide-react';
+import { Network, Activity, Cpu } from 'lucide-react';
 
 interface MapNode {
   id: string;
@@ -15,16 +15,15 @@ interface NeuralMapPanelProps {
 }
 
 export default function NeuralMapPanel({ nodes }: NeuralMapPanelProps) {
-  // Enhanced static custom nodes specifically tailored for Omega operations
+  // Enhanced compact custom nodes specifically tailored for Omega operations
   const customNodes: MapNode[] = [
-    { id: 'projects', label: 'Projects', x: 25, y: 30, status: 'NORMAL' },
-    { id: 'staff', label: 'Workforce', x: 75, y: 25, status: 'NORMAL' },
-    { id: 'fleet', label: 'Fleet & Fleet', x: 20, y: 75, status: 'WARNING' },
-    { id: 'payroll', label: 'Payroll Data', x: 70, y: 75, status: 'NORMAL' },
-    { id: 'facilities', label: 'Housing / Supply', x: 50, y: 85, status: 'NORMAL' },
+    { id: 'projects', label: 'Projects', x: 30, y: 35, status: 'NORMAL' },
+    { id: 'staff', label: 'Workforce', x: 70, y: 32, status: 'NORMAL' },
+    { id: 'fleet', label: 'Fleet Hub', x: 25, y: 72, status: 'WARNING' },
+    { id: 'payroll', label: 'Payroll', x: 75, y: 68, status: 'NORMAL' },
+    { id: 'facilities', label: 'Facilities', x: 50, y: 82, status: 'NORMAL' },
   ];
 
-  // We integrate inputs from living.neural.nodes to make it extremely premium
   const combinedNodes = customNodes.map((cn) => {
     const liveMatch = nodes.find(n => n.id.toLowerCase().includes(cn.id));
     return {
@@ -34,99 +33,106 @@ export default function NeuralMapPanel({ nodes }: NeuralMapPanelProps) {
   });
 
   return (
-    <div className="relative bg-black/60 backdrop-blur-3xl border border-white/10 rounded-2xl p-6 h-full min-h-[380px] overflow-hidden flex flex-col justify-between group hover:border-primary/40 transition-all duration-700">
-      {/* Dynamic scan line overlay */}
-      <motion.div 
-        animate={{ translateY: ['100%', '-100%'] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
-        className="absolute inset-0 bg-gradient-to-b from-transparent via-white/[0.01] to-transparent pointer-events-none select-none z-0"
-      />
+    <div className="relative bg-[#0A0A0A]/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-5 h-full min-h-[300px] overflow-hidden flex flex-col justify-between group hover:border-primary/40 hover:shadow-[0_0_20px_rgba(201,168,76,0.1)] transition-all duration-500 select-none">
+      {/* Background grid overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(#ffffff02_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-50" />
 
-      <div className="relative z-10 h-full flex flex-col justify-between">
-        {/* Header Title */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Network className="text-primary group-hover:scale-110 transition-transform duration-500" size={24} />
-            <span className="text-xs font-black uppercase tracking-[0.4em] text-foreground">
-              Omega Operations Neural Network
+      {/* Header Title */}
+      <div className="relative z-10 flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Network className="text-primary group-hover:scale-110 transition-transform duration-500" size={20} />
+          <span className="text-[11px] font-black uppercase tracking-[0.3em] text-foreground">
+            Omega Operations Neural Network
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          {/* Mini Legend */}
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Norm
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" /> Warn
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> Crit
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <Activity className="text-emerald-500 animate-pulse" size={14} />
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground select-none">
-              Nodes Operational
+            <Activity className="text-emerald-500 animate-pulse" size={12} />
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+              Nodes Dynamic
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Dynamic Network Graphic with nodes */}
-        <div className="flex-1 border border-white/5 bg-white/[0.02] rounded-xl relative p-4 overflow-hidden min-h-[220px]">
-          <svg className="absolute inset-0 w-full h-full pointer-events-none select-none">
-            {/* Center neon glow orbs & rings */}
-            <defs>
-              <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#C9A84C" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#C9A84C" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            <circle cx="50%" cy="50%" r="40" fill="url(#centerGlow)" className="animate-pulse" />
+      {/* Connected Nodes Map */}
+      <div className="relative z-10 flex-1 border border-white/5 bg-white/[0.01] rounded-xl relative overflow-hidden min-h-[220px]">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          <defs>
+            <radialGradient id="mapGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#C9A84C" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#C9A84C" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="50%" cy="50%" r="35" fill="url(#mapGlow)" className="animate-pulse" />
 
-            {/* Pulsing Central Network lines connecting everything to center */}
-            {combinedNodes.map((n, i) => (
-              <motion.line
-                key={i}
-                x1="50%"
-                y1="50%"
-                x2={`${n.x}%`}
-                y2={`${n.y}%`}
-                stroke={n.status === 'CRITICAL' ? '#EF4444' : n.status === 'WARNING' ? '#F59E0B' : '#C9A84C'}
-                strokeWidth={1.5}
-                strokeDasharray="4 4"
-                animate={{ strokeDashoffset: [-20, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                className="opacity-40 group-hover:opacity-60 transition-opacity"
-              />
-            ))}
-          </svg>
+          {combinedNodes.map((n, i) => (
+            <motion.line
+              key={i}
+              x1="50%"
+              y1="50%"
+              x2={`${n.x}%`}
+              y2={`${n.y}%`}
+              stroke={n.status === 'CRITICAL' ? '#EF4444' : n.status === 'WARNING' ? '#F59E0B' : '#C9A84C'}
+              strokeWidth={1.25}
+              strokeDasharray="4 4"
+              animate={{ strokeDashoffset: [-16, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              className="opacity-40 group-hover:opacity-60 transition-opacity"
+            />
+          ))}
+        </svg>
 
-          {/* Central Hub Core */}
-          <motion.div
-            animate={{ scale: [1, 1.05, 1], opacity: [0.8, 1, 0.8] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-black border-4 border-primary rounded-full flex flex-col items-center justify-center z-20 shadow-[0_0_20px_rgba(201,168,76,0.3)] group cursor-pointer"
-          >
-            <div className="text-[8px] font-black uppercase text-primary tracking-widest text-center select-none">
-              CORE
-            </div>
-          </motion.div>
+        {/* Central Core */}
+        <motion.div
+          animate={{ scale: [1, 1.04, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-black border-2 border-primary rounded-full flex flex-col items-center justify-center z-20 shadow-[0_0_20px_rgba(201,168,76,0.3)] hover:scale-105 duration-300 transition-transform cursor-pointer"
+        >
+          <Cpu size={14} className="text-primary animate-pulse mb-0.5" />
+          <div className="text-[7px] font-black uppercase text-primary tracking-widest text-center">
+            HUB
+          </div>
+        </motion.div>
 
-          {/* Node items over the map */}
-          {combinedNodes.map((n) => {
-            const isCritical = n.status === 'CRITICAL';
-            const isWarning = n.status === 'WARNING';
-            const statusColor = isCritical 
-              ? 'bg-red-500 border-red-500/40' 
-              : isWarning 
-              ? 'bg-yellow-500 border-yellow-500/40' 
-              : 'bg-emerald-500 border-emerald-500/40';
+        {/* Dynamic Map Nodes */}
+        {combinedNodes.map((n) => {
+          const isCritical = n.status === 'CRITICAL';
+          const isWarning = n.status === 'WARNING';
+          const statusColor = isCritical 
+            ? 'bg-red-500 border-red-500/40' 
+            : isWarning 
+            ? 'bg-yellow-500 border-yellow-500/40' 
+            : 'bg-emerald-500 border-emerald-500/40';
 
-            return (
-              <motion.div
-                key={n.id}
-                style={{ left: `${n.x}%`, top: `${n.y}%` }}
-                className="absolute -translate-x-1/2 -translate-y-1/2 z-30 flex items-center gap-2 group/node cursor-pointer select-none"
-              >
-                <div className={`w-3 h-3 rounded-full border-2 bg-black flex items-center justify-center relative hover:scale-125 transition-all duration-300`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${statusColor}`} />
-                  <div className={`absolute inset-0 rounded-full ${statusColor} animate-ping opacity-40`} />
-                </div>
-                <div className="bg-black/80 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/90 group-hover/node:text-primary transition-colors">
-                  {n.label}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+          return (
+            <motion.div
+              key={n.id}
+              style={{ left: `${n.x}%`, top: `${n.y}%` }}
+              className="absolute -translate-x-1/2 -translate-y-1/2 z-30 flex items-center gap-1.5 group/node cursor-pointer select-none"
+            >
+              <div className="w-2.5 h-2.5 rounded-full border bg-black flex items-center justify-center relative hover:scale-110 duration-300 transition-all">
+                <div className={`w-1 h-1 rounded-full ${statusColor}`} />
+                <div className={`absolute inset-0 rounded-full ${statusColor} animate-ping opacity-30`} />
+              </div>
+              <div className="bg-black/70 backdrop-blur-md border border-white/10 px-1.5 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider text-white/90 group-hover/node:text-primary transition-colors">
+                {n.label}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

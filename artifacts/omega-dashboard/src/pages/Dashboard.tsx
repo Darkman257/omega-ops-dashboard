@@ -164,9 +164,9 @@ export default function Dashboard() {
           </div>
 
           {/* 3. OPS INTELLIGENCE SIGNAL SECTION (NOW BELOW) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch border-t border-white/10 pt-8 mt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch border-t border-white/10 pt-6 mt-6 mb-6">
             {/* Left Column: Core Signal Monitoring */}
-            <div className="lg:col-span-5 h-full">
+            <div className="lg:col-span-5 h-full min-h-[220px]">
               <OpsSignalPanel 
                 verdict={living.verdict}
                 stabilityValue={living.verdict.state === 'BLEEDING' ? 35 : living.verdict.state === 'WARNING' ? 65 : 96}
@@ -174,14 +174,14 @@ export default function Dashboard() {
             </div>
 
             {/* Right Column: Reasoning and SVG Neural Map */}
-            <div className="lg:col-span-7 flex flex-col justify-between space-y-5 h-full">
+            <div className="lg:col-span-7 flex flex-col justify-between space-y-4 h-full min-h-[220px]">
               <NeuralReasoningCard 
                 what={living.aiInsight.what}
                 why={living.aiInsight.why}
                 impact={living.aiInsight.impact}
                 actionsNow={living.actionsNow}
               />
-              <div className="flex-1 min-h-[260px]">
+              <div className="flex-1 min-h-[300px]">
                 <NeuralMapPanel nodes={living.neural.nodes} />
               </div>
             </div>
