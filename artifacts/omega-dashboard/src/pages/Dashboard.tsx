@@ -16,7 +16,10 @@ import {
   Network,
   TrendingDown,
   Users,
-  Target
+  Target,
+  Truck,
+  Bell,
+  DollarSign
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -46,10 +49,16 @@ const container = {
 };
 
 export default function Dashboard() {
-  const { projects, payrollRecords, employees } = useAppContext();
+  const { projects, payrollRecords, employees, vehicles, documents } = useAppContext();
   const [mode, setMode] = useState<'OWNER' | 'OPS' | 'AI' | 'CONTRACTS'>('OWNER');
 
   const living = useMemo(() => calculateLivingSystem(projects, payrollRecords, employees), [projects, payrollRecords, employees]);
+
+  const totalEmployees = (employees || []).length;
+  const activeEmployees = (employees || []).filter(e => e.status === 'Active').length || 0;
+  const activeVehicles = (vehicles || []).filter(v => v.status === 'Active' || v.status === 'In Service').length || 0;
+  const pendingApprovals = (documents || []).filter(d => d.expiryDate && new Date(d.expiryDate) < new Date()).length || 0;
+  const cashBurnToday = (payrollRecords || []).reduce((sum, r) => sum + (r.netSalary || 0), 0) / 30;
 
   const coreColor = living.verdict.state === 'BLEEDING' ? 'text-red-500 shadow-[0_0_80px_rgba(239,68,68,0.6)]' : 
                    living.verdict.state === 'WARNING' ? 'text-amber-500 shadow-[0_0_80px_rgba(245,158,11,0.4)]' : 
@@ -87,6 +96,49 @@ export default function Dashboard() {
               {m} MODE
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* TOP CONTROL STRIP (PERSONAL CONTROL MODE) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-1 max-w-7xl mx-auto select-none">
+        <div className="bg-black/60 backdrop-blur-md border border-white/10 p-4 rounded-xl flex items-center justify-between hover:border-primary/40 transition-all duration-300">
+          <div>
+            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1">
+              <Users size={12} className="text-emerald-400" /> Workers On Duty
+            </div>
+            <div className="text-2xl font-black text-foreground">{activeEmployees} / {totalEmployees}</div>
+          </div>
+          <div className="text-xs font-bold text-muted-foreground bg-white/5 border border-white/5 px-2 py-1 rounded-lg">Real</div>
+        </div>
+
+        <div className="bg-black/60 backdrop-blur-md border border-white/10 p-4 rounded-xl flex items-center justify-between hover:border-primary/40 transition-all duration-300">
+          <div>
+            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1">
+              <Truck size={12} className="text-primary" /> Active Equipment
+            </div>
+            <div className="text-2xl font-black text-foreground">{activeVehicles} units</div>
+          </div>
+          <div className="text-xs font-bold text-muted-foreground bg-white/5 border border-white/5 px-2 py-1 rounded-lg">Real</div>
+        </div>
+
+        <div className="bg-black/60 backdrop-blur-md border border-white/10 p-4 rounded-xl flex items-center justify-between hover:border-primary/40 transition-all duration-300">
+          <div>
+            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1">
+              <Bell size={12} className="text-amber-400 animate-pulse" /> Active Alerts
+            </div>
+            <div className="text-2xl font-black text-foreground">{pendingApprovals} alerts</div>
+          </div>
+          <div className="text-xs font-bold text-muted-foreground bg-white/5 border border-white/5 px-2 py-1 rounded-lg">Real</div>
+        </div>
+
+        <div className="bg-black/60 backdrop-blur-md border border-white/10 p-4 rounded-xl flex items-center justify-between hover:border-primary/40 transition-all duration-300">
+          <div>
+            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 flex items-center gap-1">
+              <DollarSign size={12} className="text-red-400" /> Cash Burn Today
+            </div>
+            <div className="text-2xl font-black text-foreground">{Math.round(cashBurnToday).toLocaleString()} EGP</div>
+          </div>
+          <div className="text-xs font-bold text-muted-foreground bg-white/5 border border-white/5 px-2 py-1 rounded-lg">Real</div>
         </div>
       </div>
 
