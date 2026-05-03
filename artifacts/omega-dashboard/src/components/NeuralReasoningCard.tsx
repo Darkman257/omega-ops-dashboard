@@ -7,12 +7,15 @@ interface NeuralReasoningCardProps {
   why: string;
   impact: string;
   actionsNow: string[];
+  severity?: 'NORMAL' | 'WARNING' | 'CRITICAL';
 }
 
-export default function NeuralReasoningCard({ what, why, impact, actionsNow }: NeuralReasoningCardProps) {
+export default function NeuralReasoningCard({ what, why, impact, actionsNow, severity }: NeuralReasoningCardProps) {
+  const sevColor = severity === 'CRITICAL' ? 'bg-red-500' : severity === 'WARNING' ? 'bg-yellow-500' : 'bg-primary';
+
   return (
     <div className="relative bg-[#0A0A0A]/80 backdrop-blur-3xl border border-white/10 rounded-2xl p-5 h-full min-h-[220px] overflow-hidden flex flex-col justify-between group hover:border-primary/40 hover:shadow-[0_0_20px_rgba(201,168,76,0.1)] transition-all duration-500">
-      <div className="absolute top-0 left-0 w-1 h-full bg-primary group-hover:scale-y-110 transition-transform origin-top duration-500 pointer-events-none select-none" />
+      <div className={`absolute top-0 left-0 w-1 h-full ${sevColor} group-hover:scale-y-110 transition-transform origin-top duration-500 pointer-events-none select-none`} />
 
       {/* Grid background overlay */}
       <div className="absolute inset-0 bg-[radial-gradient(#ffffff02_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-50" />
@@ -27,8 +30,10 @@ export default function NeuralReasoningCard({ what, why, impact, actionsNow }: N
             </span>
           </div>
           <div className="flex items-center gap-2 select-none">
-            <div className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1">
-              <ShieldAlert size={10} className="animate-pulse" /> High Severity
+            <div className={`px-2 py-0.5 border rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1 ${
+              severity === 'CRITICAL' ? 'bg-red-500/10 border-red-500/20 text-red-400' : severity === 'WARNING' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+            }`}>
+              <ShieldAlert size={10} className="animate-pulse" /> {severity || 'NORMAL'}
             </div>
             <motion.div
               animate={{ opacity: [1, 0.4, 1] }}

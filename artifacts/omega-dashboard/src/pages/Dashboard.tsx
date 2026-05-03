@@ -60,6 +60,33 @@ export default function Dashboard() {
   const pendingApprovals = (documents || []).filter(d => d.expiryDate && new Date(d.expiryDate) < new Date()).length || 0;
   const cashBurnToday = (payrollRecords || []).reduce((sum, r) => sum + (r.netSalary || 0), 0) / 30;
 
+  const proactiveAlerts = useMemo(() => {
+    const alerts: { id: string; label: string; severity: 'NORMAL' | 'WARNING' | 'CRITICAL'; time: string }[] = [];
+    const laborRate = totalEmployees > 0 ? (activeEmployees / totalEmployees) * 100 : 0;
+    const inactiveVehicleRate = vehicles.length > 0 ? ((vehicles.length - activeVehicles) / vehicles.length) * 100 : 0;
+
+    if (laborRate < 70) {
+      alerts.push({ id: 'labor', label: `Low labor participation: ${laborRate.toFixed(1)}%`, severity: 'WARNING', time: 'Just now' });
+    }
+    if (inactiveVehicleRate > 30) {
+      alerts.push({ id: 'fleet', label: `Fleet inactivity exceeds 30% (${inactiveVehicleRate.toFixed(1)}%)`, severity: 'WARNING', time: 'Just now' });
+    }
+    if (pendingApprovals > 0) {
+      alerts.push({ id: 'approvals', label: `${pendingApprovals} unresolved alerts or expirations detected`, severity: 'CRITICAL', time: 'Just now' });
+    }
+    if (cashBurnToday > 15000) {
+      alerts.push({ id: 'finance', label: `Financial: Burn rate high (${Math.round(cashBurnToday).toLocaleString()} EGP)`, severity: 'WARNING', time: 'Just now' });
+    }
+
+    return alerts;
+  }, [totalEmployees, activeEmployees, vehicles.length, activeVehicles, pendingApprovals, cashBurnToday]);
+
+  const overallSeverity = useMemo(() => {
+    if (proactiveAlerts.some(a => a.severity === 'CRITICAL')) return 'CRITICAL';
+    if (proactiveAlerts.some(a => a.severity === 'WARNING')) return 'WARNING';
+    return 'NORMAL';
+  }, [proactiveAlerts]);
+
   const coreColor = living.verdict.state === 'BLEEDING' ? 'text-red-500 shadow-[0_0_80px_rgba(239,68,68,0.6)]' : 
                    living.verdict.state === 'WARNING' ? 'text-amber-500 shadow-[0_0_80px_rgba(245,158,11,0.4)]' : 
                    'text-emerald-500 shadow-[0_0_80px_rgba(16,185,129,0.4)]';
@@ -141,6 +168,40 @@ export default function Dashboard() {
           <div className="text-xs font-bold text-muted-foreground bg-white/5 border border-white/5 px-2 py-1 rounded-lg">Real</div>
         </div>
       </div>
+
+      {/* PROACTIVE ALERT ENGINE FEED */}
+      {proactiveAlerts.length > 0 && (
+        <div className="max-w-7xl mx-auto px-1">
+          <div className={`p-4 bg-[#0A0A0A]/90 backdrop-blur-md border rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 select-none animate-pulse ${
+            overallSeverity === 'CRITICAL' ? 'border-red-500/40 hover:border-red-500' : 'border-amber-500/40 hover:border-amber-500'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full animate-ping ${
+                overallSeverity === 'CRITICAL' ? 'bg-red-500' : 'bg-amber-500'
+              }`} />
+              <div>
+                <div className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                  <ShieldAlert size={14} className={overallSeverity === 'CRITICAL' ? 'text-red-500 animate-bounce' : 'text-amber-500'} />
+                  Proactive Alert Directives
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Automated signal monitoring tracks labor, fleet, finance, and expirations.</div>
+              </div>
+            </div>
+
+            {/* Compact feed items */}
+            <div className="flex flex-wrap items-center gap-2">
+              {proactiveAlerts.map((alert) => (
+                <div key={alert.id} className={`px-2.5 py-1 bg-white/5 border rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all hover:bg-white/10 ${
+                  alert.severity === 'CRITICAL' ? 'border-red-500/30 text-red-400' : 'border-amber-500/30 text-amber-400'
+                }`}>
+                  <span className={`w-1 h-1 rounded-full ${alert.severity === 'CRITICAL' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                  {alert.label} <span className="opacity-40 text-[8px] font-black tracking-widest">{alert.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {mode === 'CONTRACTS' ? (
         <ContractsFlow />
@@ -237,6 +298,7 @@ export default function Dashboard() {
                 }
                 impact={`Cash burn is ${Math.round(cashBurnToday).toLocaleString()} EGP today. Action directly affects cash flow and operational risk.`}
                 actionsNow={['Deploy Staff', 'Resolve Alerts', 'Manage Fleet']}
+                severity={overallSeverity}
               />
               <div className="flex-1 min-h-[300px]">
                 <NeuralMapPanel nodes={living.neural.nodes} />
