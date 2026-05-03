@@ -117,8 +117,9 @@ async function run() {
     // [2] "م","الاسم","الوظيفة"
     // [3] "1","محمد شعبان محمد"
     
-    let currentUnitLeft = '';
-    let currentUnitRight = '';
+    let currentUnit0 = '';
+    let currentUnit4 = '';
+    let currentUnit8 = '';
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
@@ -126,55 +127,37 @@ async function run() {
       
       const c0 = String(row[0] || '').trim();
       const c1 = String(row[1] || '').trim();
+      const c4 = String(row[4] || '').trim();
       const c5 = String(row[5] || '').trim();
+      const c8 = String(row[8] || '').trim();
+      const c9 = String(row[9] || '').trim();
       
-      if (c0.includes('شقة') || c0.includes('غرفة')) currentUnitLeft = c0;
-      if (c5.includes('شقة') || c5.includes('غرفة')) currentUnitRight = c5;
+      // Update units if row contains 'شقة' or 'غرفة'
+      if (c0.includes('شقة') || c0.includes('غرفة')) currentUnit0 = c0;
+      if (c4.includes('شقة') || c4.includes('غرفة')) currentUnit4 = c4;
+      else if (c5.includes('شقة') || c5.includes('غرفة')) currentUnit4 = c5; // Sometimes it's in c5
+      if (c8.includes('شقة') || c8.includes('غرفة')) currentUnit8 = c8;
+      else if (c9.includes('شقة') || c9.includes('غرفة')) currentUnit8 = c9;
       
-      // Left resident
-      if (c1 && c1 !== 'الاسم' && c0 !== 'م') {
-        const residentName = c1;
-        const unit = currentUnitLeft || 'Unknown Unit';
-        const building = 'ابراج دبى'; // Inferred from filename audit
+      const ignoreWords = ['م', 'الاسم', 'الوظيفة', ''];
+      
+      const processResident = (residentName: string, unit: string) => {
+        if (!residentName || ignoreWords.includes(residentName)) return;
+        // Ignore numbers which might be capacities
+        if (/^\d+$/.test(residentName)) return;
         
-        const unitKey = `${building}_${unit}`;
-        if (!units.has(unitKey)) {
-          units.set(unitKey, { unit_number: unit, building, location: building, notes: '' });
-        }
-        
-        let code: string | null = null;
-        let status = 'pending_review';
-        const rLower = residentName.toLowerCase();
-        if (staffMap.has(rLower)) {
-          code = staffMap.get(rLower)!;
-          status = 'linked';
-        } else {
-          for (const [sName, sCode] of staffMap.entries()) {
-            if (sName.includes(rLower) || rLower.includes(sName)) {
-              code = sCode;
-              status = 'linked';
-              break;
-            }
-          }
-        }
-        
-        residents.push({ unit_number: unit, employee_name: residentName, employee_code: code, assignment_status: status });
-      }
-
-      // Right resident
-      if (c5 && c5 !== 'الاسم' && !c5.includes('شقة') && !c5.includes('غرفة') && row[4] !== 'م') {
-        const residentName = c5;
-        const unit = currentUnitRight || 'Unknown Unit';
         const building = 'ابراج دبى';
+        const finalUnit = unit || 'Unknown Unit';
+        const unitKey = `${building}_${finalUnit}`;
         
-        const unitKey = `${building}_${unit}`;
         if (!units.has(unitKey)) {
-          units.set(unitKey, { unit_number: unit, building, location: building, notes: '' });
+          units.set(unitKey, { unit_number: finalUnit, building, location: building, notes: '' });
         }
         
         let code: string | null = null;
         let status = 'pending_review';
         const rLower = residentName.toLowerCase();
+        
         if (staffMap.has(rLower)) {
           code = staffMap.get(rLower)!;
           status = 'linked';
@@ -187,9 +170,17 @@ async function run() {
             }
           }
         }
-        
-        residents.push({ unit_number: unit, employee_name: residentName, employee_code: code, assignment_status: status });
-      }
+        residents.push({ unit_number: finalUnit, employee_name: residentName, employee_code: code, assignment_status: status });
+      };
+
+      // Block 1 (col 1)
+      if (c1 && !c1.includes('شقة') && !c1.includes('غرفة')) processResident(c1, currentUnit0);
+      
+      // Block 2 (col 5)
+      if (c5 && !c5.includes('شقة') && !c5.includes('غرفة')) processResident(c5, currentUnit4);
+      
+      // Block 3 (col 9)
+      if (c9 && !c9.includes('شقة') && !c9.includes('غرفة')) processResident(c9, currentUnit8);
     }
   } else {
     console.log(`  ✗ Only XLSX is fully supported in this parser right now.`);

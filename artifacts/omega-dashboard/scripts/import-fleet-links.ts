@@ -149,7 +149,9 @@ async function run() {
           actualPlate = `RENTAL_${Math.floor(Math.random()*10000)}`; // Rentals might not list plates here
         }
 
-        if (!actualDriver || actualDriver === 'لا يوجد' || actualDriver === 'الاسم') continue;
+        // Clean headers and bad data
+        const ignoreWords = ['لا يوجد', 'الاسم', 'إسم السائق', 'اسماء الموظفين', 'الوظيفة'];
+        if (!actualDriver || ignoreWords.includes(actualDriver)) continue;
           
           let code: string | null = null;
           let status = 'pending_review';
