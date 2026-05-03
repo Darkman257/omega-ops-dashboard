@@ -242,24 +242,32 @@ async function run() {
       const { error: uErr } = await supabase
         .from('housing_units')
         .update({
+          unit_name: u.unit_number,
           location: u.location,
           notes: u.notes,
           source_file: file.split('/').pop()
         })
         .eq('id', existingMap.get(key));
-      if (uErr) unitErrors++;
+      if (uErr) {
+        console.error(`  ✗ Error updating unit ${key}: ${uErr.message}`);
+        unitErrors++;
+      }
     } else {
       // Insert new
       const { error: uErr } = await supabase
         .from('housing_units')
         .insert({
+          unit_name: u.unit_number,
           unit_number: u.unit_number,
           building: u.building,
           location: u.location,
           notes: u.notes,
           source_file: file.split('/').pop()
         });
-      if (uErr) unitErrors++;
+      if (uErr) {
+        console.error(`  ✗ Error inserting unit ${key}: ${uErr.message}`);
+        unitErrors++;
+      }
     }
   }
   
@@ -273,29 +281,36 @@ async function run() {
   }
 
   // Push assignments
+  let insertedResidents = 0;
   for (const r of residents) {
-    // We need to match by building+unit, assuming 'ابراج دبى' for this specific file
+    // Only insert if verified with an employee code
+    if (!r.employee_code) continue;
+
     const unitId = unitIdMap.get(`ابراج دبى_${r.unit_number}`);
     if (!unitId) continue;
     
-    // Skip if no code and we only want strict linked, but we allow pending
     const { error: rErr } = await supabase
       .from('housing_assignments')
       .insert({
         housing_unit_id: unitId,
         employee_name: r.employee_name,
-        employee_code: r.employee_code || 'PENDING',
+        employee_code: r.employee_code,
         assignment_status: r.assignment_status,
         source_file: file.split('/').pop()
       });
       
-    if (rErr) resErrors++;
+    if (rErr) {
+      console.error(`  ✗ Error inserting resident ${r.employee_name}: ${rErr.message}`);
+      resErrors++;
+    } else {
+      insertedResidents++;
+    }
   }
 
   console.log(`\n${SEP}`);
   console.log(`  IMPORT COMPLETE`);
   console.log(`  Units pushed: ${unitVals.length - unitErrors}`);
-  console.log(`  Residents pushed: ${residents.length - resErrors}`);
+  console.log(`  Residents pushed: ${insertedResidents}`);
   console.log(`${SEP}\n`);
 }
 
