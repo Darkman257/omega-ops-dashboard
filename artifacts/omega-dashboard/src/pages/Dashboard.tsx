@@ -54,6 +54,7 @@ const lastSentAlertsCache: Record<string, number> = {};
 export default function Dashboard() {
   const { projects, payrollRecords, employees, vehicles, documents } = useAppContext();
   const [mode, setMode] = useState<'OWNER' | 'OPS' | 'AI' | 'CONTRACTS'>('OWNER');
+  const [handledAlerts, setHandledAlerts] = useState<string[]>([]);
 
   const living = useMemo(() => calculateLivingSystem(projects, payrollRecords, employees), [projects, payrollRecords, employees]);
 
@@ -81,8 +82,8 @@ export default function Dashboard() {
       alerts.push({ id: 'finance', label: `Financial: Burn rate high (${Math.round(cashBurnToday).toLocaleString()} EGP)`, severity: 'WARNING', time: 'Just now' });
     }
 
-    return alerts;
-  }, [totalEmployees, activeEmployees, vehicles.length, activeVehicles, pendingApprovals, cashBurnToday]);
+    return alerts.filter(a => !handledAlerts.includes(a.id));
+  }, [totalEmployees, activeEmployees, vehicles.length, activeVehicles, pendingApprovals, cashBurnToday, handledAlerts]);
 
   const overallSeverity = useMemo(() => {
     if (proactiveAlerts.some(a => a.severity === 'CRITICAL')) return 'CRITICAL';
@@ -136,6 +137,51 @@ export default function Dashboard() {
       }
     });
   }, [proactiveAlerts]);
+
+  useEffect(() => {
+    (window as any).executeExternalCommand = async (action: string, source: string = 'telegram', issueId: string) => {
+      console.log(`[EXTERNAL COMMAND RECEIVED] Action: ${action} from ${source} for issue: ${issueId}`);
+      setHandledAlerts(prev => [...prev, issueId]);
+
+      if (action === 'Deploy backup workers') {
+        console.log('[WORKFLOW TRIGGERED] Deploying backup workers for issue:', issueId);
+      } else if (action === 'Call supervisor' || action === 'Call site supervisor') {
+        console.log('[LOGGED & ALERTED] Emergency call logged for issue:', issueId);
+      } else if (action === 'Pause tasks' || action === 'Pause related tasks') {
+        console.log('[CRITICAL STATE ACTIVATED] Tasks paused for issue:', issueId);
+      }
+
+      const logEntry = {
+        id: Math.random().toString(36).substr(2, 9),
+        action,
+        source,
+        relatedIssue: issueId,
+        timestamp: new Date().toISOString()
+      };
+      const logs = JSON.parse(localStorage.getItem('command_log') || '[]');
+      logs.push(logEntry);
+      localStorage.setItem('command_log', JSON.stringify(logs));
+
+      return { status: 'success', logged: logEntry };
+    };
+
+    const originalFetch = window.fetch;
+    window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
+      if (typeof input === 'string' && input.includes('/api/command')) {
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        const res = await (window as any).executeExternalCommand(body.action, body.source || 'telegram', body.issueId);
+        return new Response(JSON.stringify(res), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      return originalFetch.apply(this, arguments as any);
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
 
   return (
     <motion.div 
