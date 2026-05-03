@@ -15,7 +15,8 @@
     "schema-report": "node --env-file=.env --experimental-strip-types scripts/schema-report.ts",
     "reconcile": "node --env-file=.env --experimental-strip-types scripts/reconciliation-audit.ts",
     "payroll-training": "node --env-file=.env --experimental-strip-types scripts/payroll-training-report.ts",
-    "payroll-validation": "node --env-file=.env --experimental-strip-types scripts/payroll-validation.ts"
+    "payroll-validation": "node --env-file=.env --experimental-strip-types scripts/payroll-validation.ts",
+    "obsidier-training": "node --env-file=.env --experimental-strip-types scripts/obsidier-training-report.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
