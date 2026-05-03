@@ -31,6 +31,9 @@ import {
 import { useAppContext } from '@/context/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { calculateLivingSystem, NeuralNode, LivingSystemData } from '@/lib/financials';
+import { WeatherRiskWidget } from '@/reference-patterns/omega/WeatherRiskWidget';
+import { RealtimeOpsFeed } from '@/reference-patterns/omega/RealtimeOpsFeed';
+import { OperationalKpiCard } from '@/reference-patterns/omega/OperationalKpiCard';
 
 const container = {
   hidden: { opacity: 0 },
@@ -228,6 +231,57 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      </div>
+
+      {/* OMEGA WAR ROOM LAYER */}
+      <div className="space-y-6 mt-12 border-t border-white/10 pt-12 relative z-10">
+        <div className="flex items-center gap-3 mb-6">
+          <Activity className="text-primary" size={24} />
+          <h2 className="text-2xl font-black tracking-widest uppercase text-foreground neon-text-gold">
+            Omega War Room Layer
+          </h2>
+        </div>
+        
+        {/* Top Row: KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <OperationalKpiCard 
+            title="Active Machinery" 
+            value={living.summary.activeSites * 12 || 142} 
+            unit="Units" 
+            trend={12.5} 
+            color="cyan" 
+          />
+          <OperationalKpiCard 
+            title="Workforce Presence" 
+            value={living.summary.workforce.present || 854} 
+            unit="Staff" 
+            trend={-2.1} 
+            color="emerald" 
+          />
+          <OperationalKpiCard 
+            title="Critical Delays" 
+            value={living.summary.criticalRisks || 3} 
+            unit="Alerts" 
+            trend={15.0} 
+            color="amber" 
+          />
+        </div>
+
+        {/* Bottom Row: Weather & Feed */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4 h-full">
+            <WeatherRiskWidget 
+              siteName="NEOM Sector 4"
+              temperature={42}
+              condition="Sandstorm Warning"
+              riskLevel="Critical"
+              activeAlerts={["Crane Operations Suspended", "Visibility < 50m"]}
+            />
+          </div>
+          <div className="lg:col-span-8 h-full">
+            <RealtimeOpsFeed title="Live Operations Stream (Auto-Sync)" />
+          </div>
         </div>
       </div>
 

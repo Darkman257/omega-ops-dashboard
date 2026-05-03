@@ -220,6 +220,16 @@ export function calculateProjectFinancials(project: Project, payroll: PayrollRec
   };
 }
 
+export interface PayrollLeak {
+  id: string;
+  type: 'MISSING_CODE' | 'UNLINKED_STAFF' | 'DUPLICATE' | 'ZERO_SALARY' | 'OVER_BUDGET';
+  description: string;
+  severity: 'CRITICAL' | 'HIGH';
+  recordId?: string;
+  internalCode?: string;
+  projectId?: string;
+}
+
 export function detectPayrollLeaks(payroll: PayrollRecord[], staff: Employee[], projects: Project[]): PayrollLeak[] {
   const leaks: PayrollLeak[] = [];
   const seen = new Set<string>();

@@ -121,7 +121,12 @@ function AddEmployeeModal({ open, onOpenChange }: { open: boolean; onOpenChange:
   const form = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeSchema), defaultValues });
 
   const onSubmit = (values: EmployeeFormValues) => {
-    addEmployee({ ...values, passportExpiry: values.passportExpiry || '', currentSite: (values as any).currentSite || '' });
+    addEmployee({ 
+      ...values, 
+      passportExpiry: values.passportExpiry || '', 
+      currentSite: (values as any).currentSite || '',
+      internalCode: (values as any).internalCode || ''
+    });
     onOpenChange(false);
     form.reset();
   };
@@ -168,7 +173,11 @@ function EditEmployeeModal({ employee, onClose }: { employee: Employee; onClose:
   });
 
   const onSubmit = (values: EmployeeFormValues) => {
-    updateEmployee(employee.id, { ...values, passportExpiry: values.passportExpiry || '' });
+    updateEmployee(employee.id, { 
+      ...values, 
+      passportExpiry: values.passportExpiry || '',
+      internalCode: (values as any).internalCode || employee.internalCode || ''
+    });
     onClose();
   };
 
