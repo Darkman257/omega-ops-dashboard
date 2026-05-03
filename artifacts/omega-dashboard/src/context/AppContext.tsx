@@ -88,6 +88,7 @@ export interface Vehicle {
   carName: string;
   plateNumber: string;
   driver: string;
+  driverCode?: string;
   fuelCardBalance: number;
   lastService: string;
   maintenanceCost: number;
@@ -264,6 +265,7 @@ const mapVehicle = (row: any): Vehicle => ({
   carName: row.car_name ?? row.carName ?? '',
   plateNumber: row.plate_number ?? row.plateNumber ?? '',
   driver: row.driver ?? '',
+  driverCode: row.driver_code ?? row.driverCode ?? '',
   fuelCardBalance: Number(row.fuel_balance ?? row.fuelCardBalance ?? 0),
   lastService: row.last_service ?? row.lastService ?? '',
   maintenanceCost: Number(row.maintenance_cost ?? row.maintenanceCost ?? 0),
@@ -277,6 +279,7 @@ const unmapVehicle = (v: Partial<Vehicle>): any => {
   if (v.carName !== undefined) out.car_name = v.carName;
   if (v.plateNumber !== undefined) out.plate_number = v.plateNumber;
   if (v.driver !== undefined) out.driver = v.driver;
+  if (v.driverCode !== undefined) out.driver_code = v.driverCode;
   if (v.fuelCardBalance !== undefined) out.fuel_balance = v.fuelCardBalance;
   if (v.lastService !== undefined) out.last_service = v.lastService;
   if (v.maintenanceCost !== undefined) out.maintenance_cost = v.maintenanceCost;

@@ -288,7 +288,8 @@ export default function Fleet() {
     const matchesSearch = !search ||
       v.carName.toLowerCase().includes(search.toLowerCase()) ||
       v.plateNumber.toLowerCase().includes(search.toLowerCase()) ||
-      v.driver.toLowerCase().includes(search.toLowerCase());
+      v.driver.toLowerCase().includes(search.toLowerCase()) ||
+      (v.driverCode ?? '').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || v.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -399,7 +400,14 @@ export default function Fleet() {
                     <TableCell>
                       <span className="font-mono text-sm bg-white/10 px-2 py-0.5 rounded">{v.plateNumber}</span>
                     </TableCell>
-                    <TableCell className="text-sm">{v.driver}</TableCell>
+                    <TableCell className="text-sm">
+                      {v.driver}
+                      {v.driverCode && (
+                        <Badge variant="outline" className="ml-2 bg-cyan-500/10 text-cyan-400 border-cyan-500/30 text-[10px] px-1.5 font-mono">
+                          {v.driverCode}
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right font-mono text-sm">
                       <div className="flex items-center justify-end gap-1">
                         <Fuel size={11} className="text-yellow-400" />

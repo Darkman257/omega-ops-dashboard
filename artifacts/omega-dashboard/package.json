@@ -19,7 +19,8 @@
     "obsidier-training": "node --env-file=.env --experimental-strip-types scripts/obsidier-training-report.ts",
     "code-audit": "node --env-file=.env --experimental-strip-types scripts/code-audit.ts",
     "import-obsidier-staff": "node --env-file=.env --experimental-strip-types scripts/import-obsidier-staff.ts",
-    "pending-biometrics": "node --env-file=.env --experimental-strip-types scripts/biometric-pending-review.ts"
+    "pending-biometrics": "node --env-file=.env --experimental-strip-types scripts/biometric-pending-review.ts",
+    "link-fleet": "node --env-file=.env --experimental-strip-types scripts/link-fleet-staff.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
