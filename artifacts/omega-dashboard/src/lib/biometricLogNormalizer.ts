@@ -142,7 +142,41 @@ export function normalizeBiometricLogs(
 
   const employeeIds = new Set<string>();
   const rows = parseCSVRows(rawCSV);
+  const daysInMonth = new Date(year, month, 0).getDate();
 
+  // ─── Step 1: Detect header row and extract actual day numbers ───────────────
+  // The header row has "Employee ID" or "No" in col 0.
+  // Day columns start at COL_DAYS_START and contain numeric day values.
+  // e.g. "Employee ID,Name,Department,2,3" → dayMap[3]=2, dayMap[4]=3
+  const dayMap = new Map<number, number>(); // colIndex → actual day number
+
+  for (const row of rows) {
+    const col0 = row[COL_EMPLOYEE_ID]?.trim().toLowerCase() ?? '';
+    // Detect header row by checking col 0 is non-numeric and col 2 contains 'dept'
+    // OR col 0 looks like "employee id" / "no" / "رقم"
+    if (
+      col0 === 'employee id' || col0 === 'no' || col0 === 'رقم' ||
+      col0 === 'emp id' || col0 === 'employee no' ||
+      (!col0 || isNaN(Number(col0)))  // col0 is text → likely a header
+    ) {
+      let foundDays = false;
+      for (let c = COL_DAYS_START; c < row.length; c++) {
+        const val = row[c]?.trim();
+        if (!val) continue;
+        const dayNum = parseInt(val, 10);
+        if (!isNaN(dayNum) && dayNum >= 1 && dayNum <= 31) {
+          dayMap.set(c, dayNum);
+          foundDays = true;
+        }
+      }
+      if (foundDays) break; // found the right header row
+    }
+  }
+
+  // If no day header found, fall back to positional (day 1 = first column)
+  const useHeaderDays = dayMap.size > 0;
+
+  // ─── Step 2: Process data rows ───────────────────────────────────────────────
   for (const row of rows) {
     if (row.length < COL_DAYS_START + 1) continue;
 
@@ -156,14 +190,16 @@ export function normalizeBiometricLogs(
 
     // Iterate over day columns
     for (let col = COL_DAYS_START; col < row.length; col++) {
-      const dayNumber = col - COL_DAYS_START + 1;
+      // Resolve the actual day number
+      const dayNumber = useHeaderDays
+        ? (dayMap.get(col) ?? null)
+        : (col - COL_DAYS_START + 1);
+
+      if (dayNumber === null) continue;                 // unmapped column
+      if (dayNumber < 1 || dayNumber > daysInMonth) continue;
+
       const cellValue = row[col] ?? '';
-
-      // Skip days outside the month range
-      const daysInMonth = new Date(year, month, 0).getDate();
-      if (dayNumber > daysInMonth) continue;
-
-      const rawTimes = extractTimes(cellValue);
+      const rawTimes  = extractTimes(cellValue);
 
       if (rawTimes.length === 0) {
         skippedDays++;
@@ -173,14 +209,14 @@ export function normalizeBiometricLogs(
       daysParsed++;
 
       // Deduplicate keeping count of removed
-      const unique  = [...new Set(rawTimes)];
+      const unique = [...new Set(rawTimes)];
       duplicateScanCount += rawTimes.length - unique.length;
 
       // Sort ascending
       unique.sort();
 
-      const logDate  = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
-      const rawTimesForAudit = rawTimes;   // preserve original (pre-dedup)
+      const logDate          = `${year}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+      const rawTimesForAudit = rawTimes;  // preserve original (pre-dedup)
 
       if (unique.length === 1) {
         // Only one punch — create IN, flag missing_out
