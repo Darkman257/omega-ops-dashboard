@@ -8,6 +8,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { convertXlsxToCsv } from './xlsx-to-csv.ts';
 
 const files = [
   './data/الشقق (1).xlsx',
@@ -50,35 +51,47 @@ async function analyze() {
 
     if (targetFile.endsWith('.xlsx')) {
       if (!xlsx) {
-        console.log(`  ✗ Cannot parse .xlsx without 'xlsx' package. Please convert to .csv or install xlsx.`);
+        console.log(`  ⚠ 'xlsx' package missing. Attempting offline fallback conversion...`);
+        const tempCsv = targetFile.replace('.xlsx', '.temp.csv');
+        const success = convertXlsxToCsv(targetFile, tempCsv);
+        if (success) {
+          targetFile = tempCsv;
+          // Fall through to CSV handling
+        } else {
+          console.log(`  ✗ Offline conversion failed. Please convert to .csv manually.`);
+          continue;
+        }
+      } else {
+        try {
+          const workbook = xlsx.readFile(targetFile);
+          console.log(`  Sheet Names: ${workbook.SheetNames.join(', ')}`);
+          
+          for (const sheetName of workbook.SheetNames) {
+            console.log(`\n    📄 Sheet: ${sheetName}`);
+            const sheet = workbook.Sheets[sheetName];
+            const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+            
+            if (data.length === 0) {
+              console.log(`      Empty sheet.`);
+              continue;
+            }
+            
+            const headers = data[0] as string[];
+            console.log(`      Detected Columns: ${headers.join(' | ')}`);
+            console.log(`      Total Rows: ${data.length}`);
+            console.log(`\n      First 5 rows preview:`);
+            data.slice(1, 6).forEach((row: any, i: number) => {
+              console.log(`      [${i + 1}] ${JSON.stringify(row)}`);
+            });
+          }
+        } catch (err: any) {
+          console.log(`  ✗ Error parsing XLSX: ${err.message}`);
+        }
         continue;
       }
-      try {
-        const workbook = xlsx.readFile(targetFile);
-        console.log(`  Sheet Names: ${workbook.SheetNames.join(', ')}`);
-        
-        for (const sheetName of workbook.SheetNames) {
-          console.log(`\n    📄 Sheet: ${sheetName}`);
-          const sheet = workbook.Sheets[sheetName];
-          const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-          
-          if (data.length === 0) {
-            console.log(`      Empty sheet.`);
-            continue;
-          }
-          
-          const headers = data[0] as string[];
-          console.log(`      Detected Columns: ${headers.join(' | ')}`);
-          console.log(`      Total Rows: ${data.length}`);
-          console.log(`\n      First 5 rows preview:`);
-          data.slice(1, 6).forEach((row: any, i: number) => {
-            console.log(`      [${i + 1}] ${JSON.stringify(row)}`);
-          });
-        }
-      } catch (err: any) {
-        console.log(`  ✗ Error parsing XLSX: ${err.message}`);
-      }
-    } else if (targetFile.endsWith('.csv')) {
+    } 
+    
+    if (targetFile.endsWith('.csv')) {
       try {
         const raw = fs.readFileSync(targetFile, 'utf-8');
         const lines = raw.split(/\r?\n/).filter(l => l.trim() !== '');

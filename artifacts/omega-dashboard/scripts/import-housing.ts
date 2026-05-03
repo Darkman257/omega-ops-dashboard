@@ -9,6 +9,7 @@
 
 import * as fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
+import { convertXlsxToCsv } from './xlsx-to-csv.ts';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL as string;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY as string;
@@ -71,69 +72,123 @@ async function run() {
     process.exit(1);
   }
   
+  let data: string[][] = [];
+
   if (file.endsWith('.xlsx')) {
     if (!xlsx) {
-      console.log(`  ✗ Cannot parse .xlsx without 'xlsx' package.`);
-      process.exit(1);
+      console.log(`  ⚠ 'xlsx' package missing. Attempting offline fallback conversion...`);
+      const tempCsv = file.replace('.xlsx', '.temp.csv');
+      const success = convertXlsxToCsv(file, tempCsv);
+      if (success) {
+        const raw = fs.readFileSync(tempCsv, 'utf-8');
+        data = raw.split(/\r?\n/).map(line => {
+          const cols = [];
+          let inQuotes = false;
+          let current = '';
+          for (let i = 0; i < line.length; i++) {
+            if (line[i] === '"') inQuotes = !inQuotes;
+            else if (line[i] === ',' && !inQuotes) { cols.push(current); current = ''; }
+            else current += line[i];
+          }
+          cols.push(current);
+          return cols;
+        });
+      } else {
+        console.log(`  ✗ Cannot parse .xlsx without 'xlsx' package.`);
+        process.exit(1);
+      }
+    } else {
+      const workbook = xlsx.readFile(file);
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        data.push(...(xlsx.utils.sheet_to_json(sheet, { header: 1 }) as string[][]));
+      }
     }
     
-    const workbook = xlsx.readFile(file);
-    for (const sheetName of workbook.SheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      const data = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
+    // For الشقق (1).xlsx ->
+    // "شقة 1","4","","","","51"
+    // "م","الاسم","الوظيفة","0","","الاسم","الوظيفة"
+    // "1","محمد شعبان محمد","مساح","","1","احمد السيد غمري","م/ تنفيذ"
+    //
+    // The format is a split table (two lists side-by-side)
+    // List 1: Unit=col 0 (header row), resident=col 1
+    // List 2: Unit=col 5 (header row), resident=col 5 (wait, preview showed:
+    // [1] "شقة 1","4"
+    // [2] "م","الاسم","الوظيفة"
+    // [3] "1","محمد شعبان محمد"
+    
+    let currentUnitLeft = '';
+    let currentUnitRight = '';
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
       
-      for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        if (!row || row.length === 0) continue;
-        
-        // Assume col 0 is building/location, 1 is unit, 2 is resident name, 3 is code
-        // This is a generic guess as requested
-        const building = String(row[0] || '').trim();
-        const unit = String(row[1] || '').trim();
-        const residentName = String(row[2] || '').trim();
-        const providedCode = String(row[3] || '').trim();
-        
-        if (!unit && !residentName) continue;
+      const c0 = String(row[0] || '').trim();
+      const c1 = String(row[1] || '').trim();
+      const c5 = String(row[5] || '').trim();
+      
+      if (c0.includes('شقة') || c0.includes('غرفة')) currentUnitLeft = c0;
+      if (c5.includes('شقة') || c5.includes('غرفة')) currentUnitRight = c5;
+      
+      // Left resident
+      if (c1 && c1 !== 'الاسم' && c0 !== 'م') {
+        const residentName = c1;
+        const unit = currentUnitLeft || 'Unknown Unit';
+        const building = 'ابراج دبى'; // Inferred from filename audit
         
         const unitKey = `${building}_${unit}`;
-        if (unit && !units.has(unitKey)) {
-          units.set(unitKey, {
-            unit_number: unit,
-            building: building,
-            location: building, // fallback
-            notes: `Imported from ${file.split('/').pop()}`
-          });
+        if (!units.has(unitKey)) {
+          units.set(unitKey, { unit_number: unit, building, location: building, notes: '' });
         }
         
-        if (residentName) {
-          let code: string | null = providedCode || null;
-          let status = 'pending_review';
-          
-          if (!code && residentName) {
-            const rLower = residentName.toLowerCase();
-            if (staffMap.has(rLower)) {
-              code = staffMap.get(rLower)!;
+        let code: string | null = null;
+        let status = 'pending_review';
+        const rLower = residentName.toLowerCase();
+        if (staffMap.has(rLower)) {
+          code = staffMap.get(rLower)!;
+          status = 'linked';
+        } else {
+          for (const [sName, sCode] of staffMap.entries()) {
+            if (sName.includes(rLower) || rLower.includes(sName)) {
+              code = sCode;
               status = 'linked';
-            } else {
-              for (const [sName, sCode] of staffMap.entries()) {
-                if (sName.includes(rLower) || rLower.includes(sName)) {
-                  code = sCode;
-                  status = 'linked';
-                  break;
-                }
-              }
+              break;
             }
-          } else if (code) {
-            status = 'linked';
           }
-          
-          residents.push({
-            unit_number: unit,
-            employee_name: residentName,
-            employee_code: code,
-            assignment_status: status
-          });
         }
+        
+        residents.push({ unit_number: unit, employee_name: residentName, employee_code: code, assignment_status: status });
+      }
+
+      // Right resident
+      if (c5 && c5 !== 'الاسم' && !c5.includes('شقة') && !c5.includes('غرفة') && row[4] !== 'م') {
+        const residentName = c5;
+        const unit = currentUnitRight || 'Unknown Unit';
+        const building = 'ابراج دبى';
+        
+        const unitKey = `${building}_${unit}`;
+        if (!units.has(unitKey)) {
+          units.set(unitKey, { unit_number: unit, building, location: building, notes: '' });
+        }
+        
+        let code: string | null = null;
+        let status = 'pending_review';
+        const rLower = residentName.toLowerCase();
+        if (staffMap.has(rLower)) {
+          code = staffMap.get(rLower)!;
+          status = 'linked';
+        } else {
+          for (const [sName, sCode] of staffMap.entries()) {
+            if (sName.includes(rLower) || rLower.includes(sName)) {
+              code = sCode;
+              status = 'linked';
+              break;
+            }
+          }
+        }
+        
+        residents.push({ unit_number: unit, employee_name: residentName, employee_code: code, assignment_status: status });
       }
     }
   } else {

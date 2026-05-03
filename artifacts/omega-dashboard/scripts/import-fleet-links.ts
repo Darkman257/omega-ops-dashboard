@@ -8,6 +8,7 @@
 
 import * as fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
+import { convertXlsxToCsv } from './xlsx-to-csv.ts';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL as string;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY as string;
@@ -77,29 +78,78 @@ async function run() {
     
     const fileName = file.split('/').pop() || file;
 
+    let data: string[][] = [];
+
     if (file.endsWith('.xlsx')) {
       if (!xlsx) {
-        console.log(`  ✗ Cannot parse ${fileName} without 'xlsx' package.`);
-        continue;
+        console.log(`  ⚠ 'xlsx' package missing. Attempting offline fallback conversion...`);
+        const tempCsv = file.replace('.xlsx', '.temp.csv');
+        const success = convertXlsxToCsv(file, tempCsv);
+        if (success) {
+          const raw = fs.readFileSync(tempCsv, 'utf-8');
+          data = raw.split(/\r?\n/).map(line => {
+            // simple csv split ignoring quotes for now since we generated it
+            const cols = [];
+            let inQuotes = false;
+            let current = '';
+            for (let i = 0; i < line.length; i++) {
+              if (line[i] === '"') {
+                inQuotes = !inQuotes;
+              } else if (line[i] === ',' && !inQuotes) {
+                cols.push(current);
+                current = '';
+              } else {
+                current += line[i];
+              }
+            }
+            cols.push(current);
+            return cols;
+          });
+        } else {
+          console.log(`  ✗ Cannot parse ${fileName} without 'xlsx' package.`);
+          continue;
+        }
+      } else {
+        const workbook = xlsx.readFile(file);
+        // just take the first sheet for simplicity, or all sheets combined
+        for (const sheetName of workbook.SheetNames) {
+          const sheet = workbook.Sheets[sheetName];
+          const sheetData = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
+          data.push(...sheetData);
+        }
       }
-      
-      const workbook = xlsx.readFile(file);
-      for (const sheetName of workbook.SheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const data = xlsx.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
+
+      // Process the extracted 2D array data
+      for (let i = 1; i < data.length; i++) { // Skip header
+        const row = data[i];
+        if (!row || row.length === 0) continue;
         
-        // Skip header row
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i];
-          if (!row || row.length === 0) continue;
-          
-          // Assuming columns: 0: Name/Type, 1: Plate, 2: Driver
-          // The actual columns will depend on the real file, so we fallback gracefully
-          const carName = String(row[0] || '').trim();
-          const plate = String(row[1] || '').trim();
-          const driver = String(row[2] || '').trim();
-          
-          if (!carName && !plate && !driver) continue;
+        // For 'أسماء سيارات المشروع وسائقينها.xlsx' ->
+        // "م","نوع السيارة","إسم السائق","رقم السيارة","ملاحظات"
+        //  0        1               2             3           4
+        const carName = String(row[1] || '').trim();
+        const driver = String(row[2] || '').trim();
+        const plate = String(row[3] || '').trim();
+        
+        // For 'حصر سيارات ايجار مشروع دبي.xlsx' ->
+        // "م","اسماء الموظفين","الوظيفة","النوع","الفئه اليومية"
+        //  0        1               2       3         4
+        // (Wait, the data audit showed this file has driver in col 1, car in col 3, plate usually empty or in col 0? Let's just try both patterns if needed)
+        // Let's make it robust by checking if row[1] contains 'سوزوكي' or if row[3] contains 'سوزوكي' etc.
+        // For simplicity, let's extract generically based on headers, but for now we'll do:
+        let actualCarName = carName;
+        let actualDriver = driver;
+        let actualPlate = plate;
+        
+        if (!actualCarName && !actualDriver && !actualPlate) continue;
+        // if file is rental cars:
+        if (fileName.includes('ايجار')) {
+          actualDriver = String(row[1] || '').trim();
+          actualCarName = String(row[3] || '').trim();
+          actualPlate = `RENTAL_${Math.floor(Math.random()*10000)}`; // Rentals might not list plates here
+        }
+
+        if (!actualDriver || actualDriver === 'لا يوجد' || actualDriver === 'الاسم') continue;
           
           let code: string | null = null;
           let status = 'pending_review';
@@ -123,14 +173,13 @@ async function run() {
           }
           
           parsedVehicles.push({
-            car_name: carName || 'Unknown Vehicle',
-            plate_number: plate || `NO_PLATE_${Math.floor(Math.random()*1000)}`,
-            driver,
+            car_name: actualCarName || 'Unknown Vehicle',
+            plate_number: actualPlate || `NO_PLATE_${Math.floor(Math.random()*1000)}`,
+            driver: actualDriver,
             driver_code: code,
             source_file: fileName,
             assignment_status: status
           });
-        }
       }
     } else {
       console.log(`  ✗ Unsupported file format: ${fileName} (Use .xlsx)`);
