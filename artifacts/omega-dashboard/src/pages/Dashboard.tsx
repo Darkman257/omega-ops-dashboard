@@ -35,6 +35,7 @@ import { WeatherRiskWidget } from '@/reference-patterns/omega/WeatherRiskWidget'
 import { RealtimeOpsFeed } from '@/reference-patterns/omega/RealtimeOpsFeed';
 import { OperationalKpiCard } from '@/reference-patterns/omega/OperationalKpiCard';
 import ContractsFlow from '@/components/ContractsFlow';
+import SystemStabilityBar from '@/components/SystemStabilityBar';
 
 const container = {
   hidden: { opacity: 0 },
@@ -91,53 +92,22 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* 3. OMEGA CORE (LEFT) */}
-            <motion.div variants={container} className="lg:col-span-5 flex flex-col items-center justify-center space-y-12 py-12">
-              <div className="relative">
-                {/* Pulsing Rings */}
-                <motion.div 
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                  className={`absolute inset-[-40px] rounded-full border-2 ${coreBorder}`} 
-                />
-                <motion.div 
-                  animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0, 0.2] }}
-                  transition={{ duration: 6, repeat: Infinity }}
-                  className={`absolute inset-[-80px] rounded-full border border-white/5`} 
-                />
-                
-                {/* The Core */}
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  className={`w-64 h-64 rounded-full border-4 ${coreBorder} bg-black/60 flex flex-col items-center justify-center relative z-10 group cursor-pointer transition-all duration-700 ${coreColor}`}
-                >
-                  <div className="scanline" />
-                  <Cpu size={80} className="mb-4 animate-spin-slow opacity-80" />
-                  <div className="text-[10px] font-black uppercase tracking-[0.4em] opacity-60">Omega Core</div>
-                  <div className="text-3xl font-black tracking-tighter">{living.verdict.label}</div>
-                  
-                  {/* Core Status Glow */}
-                  <div className={`absolute inset-0 rounded-full ${living.verdict.state === 'BLEEDING' ? 'bg-red-500/10' : 'bg-emerald-500/10'} blur-2xl group-hover:blur-3xl transition-all`} />
-                </motion.div>
-
-                {/* Orbiting Nodes (Sites) */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {living.neural.nodes.filter(n => n.id !== 'core').slice(0, 4).map((n, i) => (
-                    <motion.div
-                      key={n.id}
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 20 + i * 5, repeat: Infinity, ease: "linear" }}
-                      className="absolute inset-[-120px] rounded-full"
-                    >
-                      <div 
-                        className={`w-3 h-3 rounded-full absolute top-0 left-1/2 -translate-x-1/2 ${
-                          n.status === 'CRITICAL' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-primary'
-                        }`} 
-                      />
-                    </motion.div>
-                  ))}
+            {/* 3. SYSTEM STABILITY (LEFT) */}
+            <motion.div variants={container} className="lg:col-span-5 flex flex-col items-center justify-center space-y-8 py-12">
+              <Card className="bg-black/60 backdrop-blur-3xl border-white/10 w-full max-w-sm neon-border overflow-hidden p-8 flex flex-col items-center justify-center space-y-6">
+                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">
+                  System Stability / استقرار النظام
                 </div>
-              </div>
+                <div className="flex items-center gap-6">
+                  <SystemStabilityBar value={living.verdict.state === 'BLEEDING' ? 35 : living.verdict.state === 'WARNING' ? 65 : 96} />
+                  <div className="text-5xl font-black text-foreground tracking-tighter">
+                    {living.verdict.state === 'BLEEDING' ? 35 : living.verdict.state === 'WARNING' ? 65 : 96}%
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm font-black text-foreground uppercase tracking-widest">{living.verdict.label}</div>
+                </div>
+              </Card>
 
               <div className="text-center space-y-4">
                 <h2 className="text-4xl font-black tracking-tighter text-foreground uppercase">{living.verdict.explanationAr}</h2>
