@@ -10,11 +10,15 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { importAttendanceCSV } from '../src/lib/attendanceImport';
-import * as dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { importAttendanceCSV } from '../src/lib/attendanceImport.ts';
 
-// Load .env from the omega-dashboard directory
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Env vars loaded via --env-file flag in Node 20+ or from shell environment.
+// Run: node --env-file=.env (handled by the pnpm exec command wrapper).
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;

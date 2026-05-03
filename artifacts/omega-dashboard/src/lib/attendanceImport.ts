@@ -6,7 +6,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
-import { normalizeAttendanceCSV, AttendanceStatus } from './attendanceNormalizer';
+import { normalizeAttendanceCSV } from './attendanceNormalizer.ts';
+
+type AttendanceStatus = import('./attendanceNormalizer.ts').AttendanceStatus;
 
 // ─── Compute SHA-256 fingerprint of raw CSV content ──────────────────────────
 function computeFileHash(content: string): string {
