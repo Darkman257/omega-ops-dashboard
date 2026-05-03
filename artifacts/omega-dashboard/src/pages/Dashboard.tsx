@@ -228,10 +228,15 @@ export default function Dashboard() {
             {/* Right Column: Reasoning and SVG Neural Map */}
             <div className="lg:col-span-7 flex flex-col justify-between space-y-4 h-full min-h-[220px]">
               <NeuralReasoningCard 
-                what={living.aiInsight.what}
-                why={living.aiInsight.why}
-                impact={living.aiInsight.impact}
-                actionsNow={living.actionsNow}
+                what={`${activeEmployees} of ${totalEmployees} workers on duty. ${activeVehicles} active units available. ${pendingApprovals} active alerts logged.`}
+                why={totalEmployees > 0 && (activeEmployees / totalEmployees) < 0.6 
+                  ? `Labor participation rate of ${((activeEmployees / totalEmployees) * 100).toFixed(1)}% is critical. This impacts project SLAs and deadlines directly.` 
+                  : pendingApprovals > 2 
+                  ? `Attention required: ${pendingApprovals} pending alerts/expirations need review to avoid compliance holds.` 
+                  : `Operational health is optimal with ${totalEmployees > 0 ? ((activeEmployees / totalEmployees) * 100).toFixed(1) : 100}% workforce present.`
+                }
+                impact={`Cash burn is ${Math.round(cashBurnToday).toLocaleString()} EGP today. Action directly affects cash flow and operational risk.`}
+                actionsNow={['Deploy Staff', 'Resolve Alerts', 'Manage Fleet']}
               />
               <div className="flex-1 min-h-[300px]">
                 <NeuralMapPanel nodes={living.neural.nodes} />
