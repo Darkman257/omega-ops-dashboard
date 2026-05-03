@@ -180,9 +180,10 @@ if (attNotInStaff.length > 0) {
 
 console.log(`\n  Staff ↔ Biometric Logs:`);
 console.log(`    ✅ Matched:                ${matchedStaffBio.length}`);
-console.log(`    ❌ In biometric, NOT staff: ${bioNotInStaff.length}`);
+console.log(`    ❌ In biometric, NOT staff: ${bioNotInStaff.length}  (PENDING REVIEW)`);
 if (bioNotInStaff.length > 0) {
-  console.log(`    Missing from staff: ${bioNotInStaff.sort((a, b) => Number(a) - Number(b)).join(', ')}`);
+  console.log(`    Pending review codes: ${bioNotInStaff.sort((a, b) => Number(a) - Number(b)).join(', ')}`);
+  console.log(`    ℹ️  Note: Biometric code exists but not confirmed in staff/payroll. These may be new workers or temporary labor.`);
 }
 
 // ─── Diagnosis ────────────────────────────────────────────────────────────────
