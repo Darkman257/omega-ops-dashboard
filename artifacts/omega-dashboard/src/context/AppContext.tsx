@@ -107,6 +107,28 @@ export interface HousingUnit {
   createdAt: string;
 }
 
+export interface Contract {
+  id: string;
+  unitNumber: string;
+  tenantName: string;
+  rentAmount: number;
+  status: 'Active' | 'Expired';
+  startDate: string;
+  endDate: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface Payment {
+  id: string;
+  contractId: string;
+  amount: number;
+  status: 'Paid' | 'Pending';
+  paymentDate: string;
+  notes: string;
+  createdAt: string;
+}
+
 interface AppState {
   projects: Project[];
   employees: Employee[];
@@ -114,6 +136,8 @@ interface AppState {
   payrollRecords: PayrollRecord[];
   vehicles: Vehicle[];
   housingUnits: HousingUnit[];
+  contracts: Contract[];
+  payments: Payment[];
   totalLiquidity: number;
   loading: boolean;
   currentUser: {
@@ -149,6 +173,14 @@ interface AppContextType extends AppState {
   addVehicle: (v: Omit<Vehicle, 'id' | 'createdAt'>) => void;
   updateVehicle: (id: string, v: Partial<Vehicle>) => void;
   deleteVehicle: (id: string) => void;
+
+  addContract: (c: Omit<Contract, 'id' | 'createdAt'>) => void;
+  updateContract: (id: string, c: Partial<Contract>) => void;
+  deleteContract: (id: string) => void;
+
+  addPayment: (p: Omit<Payment, 'id' | 'createdAt'>) => void;
+  updatePayment: (id: string, p: Partial<Payment>) => void;
+  deletePayment: (id: string) => void;
 
   setTotalLiquidity: (amount: number) => void;
   importData: (type: 'staff' | 'documents' | 'payroll', data: any[]) => void;
@@ -325,6 +357,51 @@ const mapHousingUnit = (row: any): HousingUnit => ({
   createdAt: row.created_at ?? new Date().toISOString(),
 });
 
+const mapContract = (row: any): Contract => ({
+  id: String(row.id),
+  unitNumber: row.unit_number ?? row.unitNumber ?? '',
+  tenantName: row.tenant_name ?? row.tenantName ?? '',
+  rentAmount: Number(row.rent_amount ?? row.rentAmount ?? 0),
+  status: row.status === 'Expired' ? 'Expired' : 'Active',
+  startDate: row.start_date ?? row.startDate ?? '',
+  endDate: row.end_date ?? row.endDate ?? '',
+  notes: row.notes ?? '',
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
+
+const unmapContract = (c: Partial<Contract>): any => {
+  const out: any = {};
+  if (c.unitNumber !== undefined) out.unit_number = c.unitNumber;
+  if (c.tenantName !== undefined) out.tenant_name = c.tenantName;
+  if (c.rentAmount !== undefined) out.rent_amount = c.rentAmount;
+  if (c.status !== undefined) out.status = c.status;
+  if (c.startDate !== undefined) out.start_date = c.startDate;
+  if (c.endDate !== undefined) out.end_date = c.endDate;
+  if (c.notes !== undefined) out.notes = c.notes;
+  return out;
+};
+
+const mapPayment = (row: any): Payment => ({
+  id: String(row.id),
+  contractId: row.contract_id ?? row.contractId ?? '',
+  amount: Number(row.amount ?? 0),
+  status: row.status === 'Paid' ? 'Paid' : 'Pending',
+  paymentDate: row.payment_date ?? row.paymentDate ?? '',
+  notes: row.notes ?? '',
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
+
+const unmapPayment = (p: Partial<Payment>): any => {
+  const out: any = {};
+  if (p.contractId !== undefined) out.contract_id = p.contractId;
+  if (p.amount !== undefined) out.amount = p.amount;
+  if (p.status !== undefined) out.status = p.status;
+  if (p.paymentDate !== undefined) out.payment_date = p.paymentDate;
+  if (p.notes !== undefined) out.notes = p.notes;
+  return out;
+};
+
+
 // ─── Storage key for liquidity (no dedicated Supabase table) ─────────────────
 const LIQUIDITY_KEY = 'omega-liquidity';
 
@@ -339,6 +416,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     payrollRecords: [],
     vehicles: [],
     housingUnits: [],
+    contracts: [],
+    payments: [],
     totalLiquidity: Number(localStorage.getItem(LIQUIDITY_KEY) ?? 0),
     loading: true,
     currentUser: JSON.parse(localStorage.getItem('omega-user') || JSON.stringify({
@@ -374,14 +453,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const refresh = async () => {
     setState(prev => ({ ...prev, loading: true }));
 
-    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData] = await Promise.all([
+    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData, contractsData, paymentsData] = await Promise.all([
       safeQuery('projects', 'created_at'),
       safeQuery('staff'),
       safeQuery('vehicles', 'created_at'),
       safeQuery('payroll_records', 'created_at'),
       safeQuery('documents', 'created_at'),
       safeQuery('housing_units'),
+      safeQuery('contracts'),
+      safeQuery('payments'),
     ]);
+
+    // robust fallback to localStorage if Supabase returns nothing or hasn't had the tables created yet
+    let finalContracts = contractsData.map(mapContract);
+    if (finalContracts.length === 0) {
+      try {
+        const localCached = localStorage.getItem('omega_contracts');
+        if (localCached) finalContracts = JSON.parse(localCached);
+      } catch (e) { console.warn(e); }
+    }
+
+    let finalPayments = paymentsData.map(mapPayment);
+    if (finalPayments.length === 0) {
+      try {
+        const localCached = localStorage.getItem('omega_payments');
+        if (localCached) finalPayments = JSON.parse(localCached);
+      } catch (e) { console.warn(e); }
+    }
 
     setState(prev => ({
       ...prev,
@@ -391,6 +489,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       payrollRecords: payrollData.map(mapPayroll),
       documents: docsData.map(mapDocument),
       housingUnits: housingData.map(mapHousingUnit),
+      contracts: finalContracts,
+      payments: finalPayments,
       loading: false,
     }));
   };
@@ -631,6 +731,84 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const addContract = (c: Omit<Contract, 'id' | 'createdAt'>) => {
+    const tempId = crypto.randomUUID();
+    const newItem: Contract = { ...c, id: tempId, createdAt: new Date().toISOString() };
+    setState(prev => {
+      const next = [newItem, ...prev.contracts];
+      localStorage.setItem('omega_contracts', JSON.stringify(next));
+      return { ...prev, contracts: next };
+    });
+    supabase.from('contracts').insert([unmapContract(c)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addContract:', error); return; }
+        if (data) setState(prev => {
+          const next = prev.contracts.map(x => x.id === tempId ? mapContract(data) : x);
+          localStorage.setItem('omega_contracts', JSON.stringify(next));
+          return { ...prev, contracts: next };
+        });
+      });
+  };
+
+  const updateContract = (id: string, updates: Partial<Contract>) => {
+    setState(prev => {
+      const next = prev.contracts.map(c => c.id === id ? { ...c, ...updates } : c);
+      localStorage.setItem('omega_contracts', JSON.stringify(next));
+      return { ...prev, contracts: next };
+    });
+    supabase.from('contracts').update(unmapContract(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updateContract:', error); });
+  };
+
+  const deleteContract = (id: string) => {
+    setState(prev => {
+      const next = prev.contracts.filter(c => c.id !== id);
+      localStorage.setItem('omega_contracts', JSON.stringify(next));
+      return { ...prev, contracts: next };
+    });
+    supabase.from('contracts').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteContract:', error); });
+  };
+
+  const addPayment = (p: Omit<Payment, 'id' | 'createdAt'>) => {
+    const tempId = crypto.randomUUID();
+    const newItem: Payment = { ...p, id: tempId, createdAt: new Date().toISOString() };
+    setState(prev => {
+      const next = [newItem, ...prev.payments];
+      localStorage.setItem('omega_payments', JSON.stringify(next));
+      return { ...prev, payments: next };
+    });
+    supabase.from('payments').insert([unmapPayment(p)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addPayment:', error); return; }
+        if (data) setState(prev => {
+          const next = prev.payments.map(x => x.id === tempId ? mapPayment(data) : x);
+          localStorage.setItem('omega_payments', JSON.stringify(next));
+          return { ...prev, payments: next };
+        });
+      });
+  };
+
+  const updatePayment = (id: string, updates: Partial<Payment>) => {
+    setState(prev => {
+      const next = prev.payments.map(p => p.id === id ? { ...p, ...updates } : p);
+      localStorage.setItem('omega_payments', JSON.stringify(next));
+      return { ...prev, payments: next };
+    });
+    supabase.from('payments').update(unmapPayment(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updatePayment:', error); });
+  };
+
+  const deletePayment = (id: string) => {
+    setState(prev => {
+      const next = prev.payments.filter(p => p.id !== id);
+      localStorage.setItem('omega_payments', JSON.stringify(next));
+      return { ...prev, payments: next };
+    });
+    supabase.from('payments').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deletePayment:', error); });
+  };
+
   const updateUser = (u: Partial<AppState['currentUser']>) => {
     setState(prev => {
       const newUser = { ...prev.currentUser, ...u };
@@ -649,6 +827,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addDocument, updateDocument, deleteDocument,
       addPayrollRecord, updatePayrollRecord, deletePayrollRecord,
       addVehicle, updateVehicle, deleteVehicle,
+      addContract, updateContract, deleteContract,
+      addPayment, updatePayment, deletePayment,
       setTotalLiquidity,
       importData,
       updateUser,
