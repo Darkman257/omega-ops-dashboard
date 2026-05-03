@@ -103,16 +103,31 @@ export default function Dashboard() {
       if (alert.severity === 'CRITICAL') {
         const now = Date.now();
         const lastSent = lastSentAlertsCache[alert.id] || 0;
+        
+        // Log if same issue persists after 30 mins
+        if (lastSent > 0 && now - lastSent > 1800000) {
+          console.warn(`[ALERT PERSISTING] Critical issue still unresolved after 30m: ${alert.label}`);
+        }
+
         // Debounce: 10 mins = 600,000 milliseconds
         if (now - lastSent > 600000) {
           lastSentAlertsCache[alert.id] = now;
+          console.log(`[ALERT SENT] Triggered critical notification: ${alert.label} at ${new Date().toLocaleTimeString()}`);
+          
           fetch('https://n8n.omega-ops.com/webhook/critical-alert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               issue: alert.label,
               impact: 'Critical operational risk detected in real-time monitoring',
-              actionRequired: 'Please review compliance/alerts immediately on the dashboard.',
+              action: 'Please review compliance/alerts immediately on the dashboard.',
+              recommended_action: 'Perform immediate compliance review and task stabilization.',
+              priority: 'HIGH',
+              quick_actions: [
+                'Call site supervisor',
+                'Deploy backup workers',
+                'Pause related tasks'
+              ],
               severity: 'CRITICAL',
               timestamp: new Date().toISOString()
             })
