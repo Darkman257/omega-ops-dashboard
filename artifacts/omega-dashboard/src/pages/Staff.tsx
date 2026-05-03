@@ -211,9 +211,11 @@ export default function Staff() {
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
 
   const filtered = employees.filter(e => {
-    const matchesSearch = e.name.toLowerCase().includes(search.toLowerCase()) ||
-      e.department.toLowerCase().includes(search.toLowerCase()) ||
-      e.role.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = e.name.toLowerCase().includes(q) ||
+      e.department.toLowerCase().includes(q) ||
+      e.role.toLowerCase().includes(q) ||
+      (e.internalCode ?? '').toLowerCase().includes(q);
     const matchesSite = !siteFilter || e.currentSite === siteFilter;
     return matchesSearch && matchesSite;
   });
@@ -231,7 +233,7 @@ export default function Staff() {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search staff..." className="pl-9 bg-white/5 border-white/10 text-sm h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input placeholder="Search by name, role, or code..." className="pl-9 bg-white/5 border-white/10 text-sm h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <Button className="h-9" onClick={() => setAddOpen(true)} data-testid="button-open-add-employee">
             <Plus size={16} className="mr-2" /> Add Employee
@@ -254,6 +256,7 @@ export default function Staff() {
           <Table>
             <TableHeader className="bg-white/5">
               <TableRow className="border-white/10 hover:bg-transparent">
+                <TableHead className="text-muted-foreground w-20">Code</TableHead>
                 <TableHead className="text-muted-foreground">Employee</TableHead>
                 <TableHead className="text-muted-foreground">Role</TableHead>
                 <TableHead className="text-muted-foreground">Contact</TableHead>
@@ -273,6 +276,15 @@ export default function Staff() {
                   className="border-white/10 hover:bg-white/5 transition-colors group cursor-pointer"
                   data-testid={`row-staff-${emp.id}`}
                 >
+                  <TableCell>
+                    {emp.internalCode ? (
+                      <Badge variant="outline" className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 text-xs font-mono px-2">
+                        {emp.internalCode}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground/40 text-xs">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9 border border-white/10 group-hover:border-primary/50 transition-colors">
