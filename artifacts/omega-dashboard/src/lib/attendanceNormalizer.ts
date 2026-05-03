@@ -16,6 +16,7 @@ export type AttendanceStatus =
   | 'off'
   | 'transferred'
   | 'compensatory'
+  | 'pending_review'
   | 'unknown';
 
 export interface AttendanceRecord {
@@ -61,6 +62,8 @@ function normalizeStatus(raw: string): AttendanceStatus {
   if (cleaned === 'بنك') return 'offsite';
   if (cleaned === 'مرضى') return 'sick';
   if (cleaned === 'ليلى' || cleaned === 'ليلي') return 'night_shift';
+  if (cleaned === 'راحة سينا') return 'rest_day';            // Sham El Nessim rest
+  if (cleaned === 'ج س') return 'pending_review';            // Absent/Sick — needs manual review
   if (cleaned.startsWith('بدل راحة') || cleaned === 'بدل نسيم') return 'rest_day';
   if (cleaned.startsWith('بدل')) return 'compensatory';
   if (cleaned.startsWith('شم نسيم') || cleaned === 'شم نسيم') return 'rest_day';
