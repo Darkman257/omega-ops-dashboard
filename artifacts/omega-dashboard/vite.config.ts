@@ -1,13 +1,27 @@
 // @ts-nocheck
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-let tailwindcssPlugin;
-try {
-  tailwindcssPlugin = (await import("@tailwindcss/vite")).default;
-} catch (e) {
-  tailwindcssPlugin = (await import("../../node_modules/.pnpm/@tailwindcss+vite@4.2.1_vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2_/node_modules/@tailwindcss/vite/dist/index.mjs")).default;
-}
+import fs from "fs";
 import path from "path";
+
+let tailwindcssPlugin;
+const pnpmDir = path.resolve(import.meta.dirname, "../../node_modules/.pnpm");
+if (fs.existsSync(pnpmDir)) {
+  const dirs = fs.readdirSync(pnpmDir).filter(d => d.startsWith("@tailwindcss+vite"));
+  if (dirs.length > 0) {
+    const p = path.join(pnpmDir, dirs[0], "node_modules/@tailwindcss/vite/dist/index.mjs");
+    if (fs.existsSync(p)) {
+      tailwindcssPlugin = (await import(p)).default;
+    }
+  }
+}
+if (!tailwindcssPlugin) {
+  try {
+    tailwindcssPlugin = (await import("@tailwindcss/vite")).default;
+  } catch (e) {
+    // fallback
+  }
+}
 // import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const port = Number(process.env.PORT ?? "3000");
@@ -18,20 +32,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcssPlugin(),
-    // runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
   ],
   resolve: {
     alias: {
