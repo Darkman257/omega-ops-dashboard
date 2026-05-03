@@ -89,6 +89,7 @@ export interface Vehicle {
   plateNumber: string;
   driver: string;
   driverCode?: string;
+  assignmentStatus?: string;
   fuelCardBalance: number;
   lastService: string;
   maintenanceCost: number;
@@ -105,6 +106,7 @@ export interface HousingUnit {
   occupants: number;
   status: string;
   notes: string;
+  residents?: { name: string; code?: string; status?: string }[];
   createdAt: string;
 }
 
@@ -266,6 +268,7 @@ const mapVehicle = (row: any): Vehicle => ({
   plateNumber: row.plate_number ?? row.plateNumber ?? '',
   driver: row.driver ?? '',
   driverCode: row.driver_code ?? row.driverCode ?? '',
+  assignmentStatus: row.assignment_status ?? 'pending_review',
   fuelCardBalance: Number(row.fuel_balance ?? row.fuelCardBalance ?? 0),
   lastService: row.last_service ?? row.lastService ?? '',
   maintenanceCost: Number(row.maintenance_cost ?? row.maintenanceCost ?? 0),
@@ -280,6 +283,7 @@ const unmapVehicle = (v: Partial<Vehicle>): any => {
   if (v.plateNumber !== undefined) out.plate_number = v.plateNumber;
   if (v.driver !== undefined) out.driver = v.driver;
   if (v.driverCode !== undefined) out.driver_code = v.driverCode;
+  if (v.assignmentStatus !== undefined) out.assignment_status = v.assignmentStatus;
   if (v.fuelCardBalance !== undefined) out.fuel_balance = v.fuelCardBalance;
   if (v.lastService !== undefined) out.last_service = v.lastService;
   if (v.maintenanceCost !== undefined) out.maintenance_cost = v.maintenanceCost;

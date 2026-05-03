@@ -401,12 +401,19 @@ export default function Fleet() {
                       <span className="font-mono text-sm bg-white/10 px-2 py-0.5 rounded">{v.plateNumber}</span>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {v.driver}
-                      {v.driverCode && (
-                        <Badge variant="outline" className="ml-2 bg-cyan-500/10 text-cyan-400 border-cyan-500/30 text-[10px] px-1.5 font-mono">
-                          {v.driverCode}
-                        </Badge>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center">
+                          {v.driver}
+                          {v.driverCode && (
+                            <Badge variant="outline" className="ml-2 bg-cyan-500/10 text-cyan-400 border-cyan-500/30 text-[10px] px-1.5 font-mono">
+                              {v.driverCode}
+                            </Badge>
+                          )}
+                        </div>
+                        {v.assignmentStatus === 'pending_review' && (
+                          <Badge variant="outline" className="w-fit bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] px-1 uppercase">Pending Review</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
                       <div className="flex items-center justify-end gap-1">

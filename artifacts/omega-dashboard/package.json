@@ -20,7 +20,12 @@
     "code-audit": "node --env-file=.env --experimental-strip-types scripts/code-audit.ts",
     "import-obsidier-staff": "node --env-file=.env --experimental-strip-types scripts/import-obsidier-staff.ts",
     "pending-biometrics": "node --env-file=.env --experimental-strip-types scripts/biometric-pending-review.ts",
-    "link-fleet": "node --env-file=.env --experimental-strip-types scripts/link-fleet-staff.ts"
+    "link-fleet": "node --env-file=.env --experimental-strip-types scripts/link-fleet-staff.ts",
+    "analyze-excel": "node --env-file=.env --experimental-strip-types scripts/analyze-excel.ts",
+    "import-fleet-links": "node --env-file=.env --experimental-strip-types scripts/import-fleet-links.ts",
+    "import-housing": "node --env-file=.env --experimental-strip-types scripts/import-housing.ts",
+    "fleet-audit": "node --env-file=.env --experimental-strip-types scripts/fleet-link-audit.ts",
+    "housing-audit": "node --env-file=.env --experimental-strip-types scripts/housing-link-audit.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
