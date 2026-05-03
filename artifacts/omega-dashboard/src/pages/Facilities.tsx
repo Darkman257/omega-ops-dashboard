@@ -116,6 +116,26 @@ export default function Facilities() {
                       style={{ width: `${Math.min(100, occupancyPct)}%` }}
                     />
                   </div>
+                  {unit.residents && unit.residents.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-white/5 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Residents</p>
+                      {unit.residents.map((r, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm bg-white/5 rounded px-2 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span>{r.name}</span>
+                            {r.code && (
+                              <Badge variant="outline" className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 text-[9px] px-1 font-mono">
+                                {r.code}
+                              </Badge>
+                            )}
+                          </div>
+                          {r.status === 'pending_review' && (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] px-1 uppercase">Pending</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {unit.notes && (
                     <p className="text-xs text-muted-foreground border-t border-white/5 pt-2">{unit.notes}</p>
                   )}
