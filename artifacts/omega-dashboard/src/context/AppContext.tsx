@@ -96,6 +96,9 @@ export interface Vehicle {
   status: 'Active' | 'In Service' | 'Out of Service';
   notes: string;
   createdAt: string;
+  routeName?: string;
+  dailyRate?: number;
+  passengerCount?: number;
 }
 
 export interface HousingUnit {
@@ -176,6 +179,15 @@ interface AppContextType extends AppState {
   addVehicle: (v: Omit<Vehicle, 'id' | 'createdAt'>) => void;
   updateVehicle: (id: string, v: Partial<Vehicle>) => void;
   deleteVehicle: (id: string) => void;
+  bulkDeleteVehicles: (ids: string[]) => void;
+  bulkUpdateVehicles: (ids: string[], updates: Partial<Vehicle>) => void;
+
+  addHousingUnit: (u: Omit<HousingUnit, 'id' | 'createdAt' | 'residents'>) => void;
+  updateHousingUnit: (id: string, u: Partial<HousingUnit>) => void;
+  deleteHousingUnit: (id: string) => void;
+
+  addHousingAssignment: (unitId: string, employeeName: string, employeeCode?: string) => Promise<void>;
+  deleteHousingAssignment: (unitId: string, employeeCode?: string, employeeName?: string) => Promise<void>;
 
   addContract: (c: Omit<Contract, 'id' | 'createdAt'>) => void;
   updateContract: (id: string, c: Partial<Contract>) => void;
@@ -274,6 +286,9 @@ const mapVehicle = (row: any): Vehicle => ({
   maintenanceCost: Number(row.maintenance_cost ?? row.maintenanceCost ?? 0),
   status: row.status ?? 'Active',
   notes: row.notes ?? '',
+  routeName: row.route_name ?? '',
+  dailyRate: Number(row.daily_rate ?? 0),
+  passengerCount: Number(row.passenger_count ?? 0),
   createdAt: row.created_at ?? new Date().toISOString(),
 });
 
@@ -282,13 +297,20 @@ const unmapVehicle = (v: Partial<Vehicle>): any => {
   if (v.carName !== undefined) out.car_name = v.carName;
   if (v.plateNumber !== undefined) out.plate_number = v.plateNumber;
   if (v.driver !== undefined) out.driver = v.driver;
-  if (v.driverCode !== undefined) out.driver_code = v.driverCode;
-  if (v.assignmentStatus !== undefined) out.assignment_status = v.assignmentStatus;
+  if (v.driverCode !== undefined || (v as any).driver_code !== undefined) {
+    out.driver_code = v.driverCode !== undefined ? v.driverCode : (v as any).driver_code;
+  }
+  if (v.assignmentStatus !== undefined || (v as any).assignment_status !== undefined) {
+    out.assignment_status = v.assignmentStatus !== undefined ? v.assignmentStatus : (v as any).assignment_status;
+  }
   if (v.fuelCardBalance !== undefined) out.fuel_balance = v.fuelCardBalance;
   if (v.lastService !== undefined) out.last_service = v.lastService;
   if (v.maintenanceCost !== undefined) out.maintenance_cost = v.maintenanceCost;
   if (v.status !== undefined) out.status = v.status;
   if (v.notes !== undefined) out.notes = v.notes;
+  if (v.routeName !== undefined) out.route_name = v.routeName;
+  if (v.dailyRate !== undefined) out.daily_rate = v.dailyRate;
+  if (v.passengerCount !== undefined) out.passenger_count = v.passengerCount;
   return out;
 };
 
@@ -363,6 +385,17 @@ const mapHousingUnit = (row: any): HousingUnit => ({
   notes: row.notes ?? '',
   createdAt: row.created_at ?? new Date().toISOString(),
 });
+
+const unmapHousingUnit = (u: Partial<HousingUnit>): any => {
+  const out: any = {};
+  if (u.unitNumber !== undefined) out.unit_number = u.unitNumber;
+  if (u.location !== undefined) out.location = u.location;
+  if (u.capacity !== undefined) out.capacity = u.capacity;
+  if (u.status !== undefined) out.status = u.status;
+  if (u.notes !== undefined) out.notes = u.notes;
+  return out;
+};
+
 
 const mapContract = (row: any): Contract => ({
   id: String(row.id),
@@ -648,15 +681,79 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateVehicle = (id: string, updates: Partial<Vehicle>) => {
+    // Optimistic update
     setState(prev => ({ ...prev, vehicles: prev.vehicles.map(v => v.id === id ? { ...v, ...updates } : v) }));
     supabase.from('vehicles').update(unmapVehicle(updates)).eq('id', id)
-      .then(({ error }) => { if (error) console.error('updateVehicle:', error); });
+      .then(({ error }) => {
+        if (error) {
+          console.error('updateVehicle:', error);
+        } else {
+          // Re-fetch to confirm DB state matches, recalculates tab counts
+          refresh();
+        }
+      });
   };
 
   const deleteVehicle = (id: string) => {
     setState(prev => ({ ...prev, vehicles: prev.vehicles.filter(v => v.id !== id) }));
     supabase.from('vehicles').delete().eq('id', id)
       .then(({ error }) => { if (error) console.error('deleteVehicle:', error); });
+  };
+
+  const bulkDeleteVehicles = (ids: string[]) => {
+    setState(prev => ({ ...prev, vehicles: prev.vehicles.filter(v => !ids.includes(v.id)) }));
+    supabase.from('vehicles').delete().in('id', ids)
+      .then(({ error }) => { if (error) console.error('bulkDeleteVehicles:', error); });
+  };
+
+  const bulkUpdateVehicles = (ids: string[], updates: Partial<Vehicle>) => {
+    setState(prev => ({ ...prev, vehicles: prev.vehicles.map(v => ids.includes(v.id) ? { ...v, ...updates } : v) }));
+    supabase.from('vehicles').update(unmapVehicle(updates)).in('id', ids)
+      .then(({ error }) => { if (error) console.error('bulkUpdateVehicles:', error); });
+  };
+
+  // ─── Housing Units ────────────────────────────────────────────────────────
+
+  const addHousingUnit = (u: Omit<HousingUnit, 'id' | 'createdAt' | 'residents'>) => {
+    const tempId = crypto.randomUUID();
+    const newItem: HousingUnit = { ...u, id: tempId, createdAt: new Date().toISOString(), residents: [], occupants: 0 };
+    setState(prev => ({ ...prev, housingUnits: [newItem, ...prev.housingUnits] }));
+    supabase.from('housing_units').insert([unmapHousingUnit(u)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addHousingUnit:', error); return; }
+        if (data) refresh(); // Re-fetch to get correct associations
+      });
+  };
+
+  const updateHousingUnit = (id: string, updates: Partial<HousingUnit>) => {
+    setState(prev => ({ ...prev, housingUnits: prev.housingUnits.map(u => u.id === id ? { ...u, ...updates } : u) }));
+    supabase.from('housing_units').update(unmapHousingUnit(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updateHousingUnit:', error); });
+  };
+
+  const deleteHousingUnit = (id: string) => {
+    setState(prev => ({ ...prev, housingUnits: prev.housingUnits.filter(u => u.id !== id) }));
+    supabase.from('housing_units').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteHousingUnit:', error); });
+  };
+
+  const addHousingAssignment = async (unitId: string, employeeName: string, employeeCode?: string) => {
+    const { error } = await supabase.from('housing_assignments').insert([{
+      housing_unit_id: unitId,
+      employee_name: employeeName,
+      employee_code: employeeCode,
+      assignment_status: 'linked'
+    }]);
+    if (!error) refresh(); // Refresh to get updated residents
+  };
+
+  const deleteHousingAssignment = async (unitId: string, employeeCode?: string, employeeName?: string) => {
+    let q = supabase.from('housing_assignments').delete().eq('housing_unit_id', unitId);
+    if (employeeCode) q = q.eq('employee_code', employeeCode);
+    else if (employeeName) q = q.eq('employee_name', employeeName);
+    
+    const { error } = await q;
+    if (!error) refresh(); // Refresh to get updated residents
   };
 
   // ─── Liquidity ────────────────────────────────────────────────────────────
@@ -848,7 +945,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addEmployee, updateEmployee, deleteEmployee,
       addDocument, updateDocument, deleteDocument,
       addPayrollRecord, updatePayrollRecord, deletePayrollRecord,
-      addVehicle, updateVehicle, deleteVehicle,
+      addVehicle, updateVehicle, deleteVehicle, bulkDeleteVehicles, bulkUpdateVehicles,
+      addHousingUnit, updateHousingUnit, deleteHousingUnit,
+      addHousingAssignment, deleteHousingAssignment,
       addContract, updateContract, deleteContract,
       addPayment, updatePayment, deletePayment,
       setTotalLiquidity,
