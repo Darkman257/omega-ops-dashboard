@@ -12,10 +12,16 @@ CREATE TABLE IF NOT EXISTS approvals (
   reviewed_date DATE,
   notes TEXT,
   amount NUMERIC DEFAULT 0,
-  linked_record_id UUID,
+  linked_record_id TEXT,
   linked_table TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
+
+-- Ensure columns exist if the table was created previously without them
+ALTER TABLE approvals 
+  ADD COLUMN IF NOT EXISTS type TEXT,
+  ADD COLUMN IF NOT EXISTS linked_record_id TEXT,
+  ADD COLUMN IF NOT EXISTS linked_table TEXT;
 
 ALTER TABLE approvals ENABLE ROW LEVEL SECURITY;
 
