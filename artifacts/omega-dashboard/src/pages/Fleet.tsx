@@ -18,6 +18,7 @@ import {
   Car, Plus, Pencil, Trash2, Search, UserMinus,
   Wrench, CheckCircle2, AlertTriangle, TrendingDown, Wallet, AlertCircle
 } from 'lucide-react';
+import { normalizeSearchText, matchesSearch } from '@/lib/searchUtils';
 
 const vehicleSchema = z.object({
   routeName: z.string().optional(),
@@ -226,8 +227,7 @@ function AssignDriverModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: ()
   const [assigning, setAssigning] = useState(false);
 
   const filtered = employees.filter(e =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.internalCode.toLowerCase().includes(search.toLowerCase())
+    matchesSearch(search, e.name, e.internalCode)
   );
 
   const assign = (emp: typeof employees[number]) => {
@@ -410,15 +410,9 @@ export default function Fleet() {
   });
 
   const filtered = tabFiltered.filter(v => {
-    const q = search.toLowerCase();
-    const matchesSearch = !q ||
-      (v.carName ?? '').toLowerCase().includes(q) ||
-      (v.plateNumber ?? '').toLowerCase().includes(q) ||
-      (v.driver ?? '').toLowerCase().includes(q) ||
-      (v.routeName ?? '').toLowerCase().includes(q) ||
-      (v.driverCode ?? '').toLowerCase().includes(q);
+    const matchesSearchText = matchesSearch(search, v.carName, v.plateNumber, v.driver, v.routeName, v.driverCode);
     const matchesStatus = !statusFilter || v.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearchText && matchesStatus;
   });
 
   const allFilteredSelected = filtered.length > 0 && filtered.every(v => selectedIds.has(v.id));

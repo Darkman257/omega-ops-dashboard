@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import * as z from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { normalizeSearchText, matchesSearch } from '@/lib/searchUtils';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -211,13 +212,9 @@ export default function Staff() {
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
 
   const filtered = employees.filter(e => {
-    const q = search.toLowerCase();
-    const matchesSearch = e.name.toLowerCase().includes(q) ||
-      e.department.toLowerCase().includes(q) ||
-      e.role.toLowerCase().includes(q) ||
-      (e.internalCode ?? '').toLowerCase().includes(q);
+    const matchesSearchText = matchesSearch(search, e.name, e.department, e.role, e.internalCode);
     const matchesSite = !siteFilter || e.currentSite === siteFilter;
-    return matchesSearch && matchesSite;
+    return matchesSearchText && matchesSite;
   });
 
   const getInsuranceColor = (status: string) => {

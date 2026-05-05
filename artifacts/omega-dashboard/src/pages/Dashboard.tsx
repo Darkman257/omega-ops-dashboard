@@ -46,6 +46,7 @@ import NeuralReasoningCard from '@/components/NeuralReasoningCard';
 import NeuralMapPanel from '@/components/NeuralMapPanel';
 
 import { buildAiInsights } from '@/lib/aiInsights';
+import { buildOpsMaestroReport } from '@/lib/opsInsights';
 import { OwnerModeView } from '@/components/dashboard/OwnerModeView';
 import { OpsModeView } from '@/components/dashboard/OpsModeView';
 import { AiModeView } from '@/components/dashboard/AiModeView';
@@ -58,7 +59,7 @@ const container = {
 const lastSentAlertsCache: Record<string, number> = {};
 
 export default function Dashboard() {
-  const { projects, payrollRecords, employees, vehicles, documents } = useAppContext();
+  const { projects, payrollRecords, employees, vehicles, documents, housingUnits } = useAppContext();
   const [mode, setMode] = useState<'OWNER' | 'OPS' | 'AI' | 'CONTRACTS'>('OWNER');
   const [handledAlerts, setHandledAlerts] = useState<string[]>([]);
   const [autonomyMode, setAutonomyMode] = useState<'OFF' | 'ASSISTED' | 'AUTO_SAFE'>('AUTO_SAFE');
@@ -85,6 +86,19 @@ export default function Dashboard() {
     activeVehicles,
     cashBurnToday
   }), [employees, vehicles, payrollRecords, projects, attendanceMetrics, activeEmployees, activeVehicles, cashBurnToday]);
+
+  // Ops Maestro Report Generation
+  const maestroReport = useMemo(() => buildOpsMaestroReport({
+    employees,
+    vehicles,
+    payrollRecords,
+    projects,
+    housingUnits,
+    attendanceMetrics,
+    activeEmployees,
+    activeVehicles,
+    cashBurnToday
+  }), [employees, vehicles, payrollRecords, projects, housingUnits, attendanceMetrics, activeEmployees, activeVehicles, cashBurnToday]);
 
   const context = useMemo(() => {
     const today = new Date();
@@ -229,7 +243,8 @@ export default function Dashboard() {
               activeVehicles={activeVehicles}
               vehicles={vehicles}
               attendanceMetrics={attendanceMetrics}
-              housingUnits={[]} // Add housingUnits if available in context
+              housingUnits={housingUnits}
+              maestroReport={maestroReport}
             />
           )}
           {mode === 'AI' && (

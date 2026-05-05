@@ -12,25 +12,30 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Building2, Users, MapPin, Search, BedDouble, CheckCircle2, Trash2, Edit2, Plus, X, MoreVertical } from 'lucide-react';
+import { Building2, Users, MapPin, Search, BedDouble, CheckCircle2, Trash2, Edit2, Plus, X, AlertTriangle } from 'lucide-react';
+import { normalizeSearchText, matchesSearch } from '@/lib/searchUtils';
 
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' as const } },
 };
 
-const statusColor: Record<string, string> = {
-  Available: 'bg-green-500/15 text-green-400 border-green-500/30',
-  'Fully Occupied': 'bg-red-500/15 text-red-400 border-red-500/30',
-  Partial: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
-  Maintenance: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+type OccupancyStatus = 'available' | 'partial' | 'full' | 'needs_capacity';
+
+const getOccupancyInfo = (unit: HousingUnit) => {
+  const cap = unit.capacity || 0;
+  const occ = unit.occupants || 0;
+  
+  if (cap <= 0) return { status: 'needs_capacity' as OccupancyStatus, label: 'Needs Capacity', color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-500/10', bar: 'bg-amber-500' };
+  if (occ === 0) return { status: 'available' as OccupancyStatus, label: 'Available', color: 'text-green-400', border: 'border-green-500/30', bg: 'bg-green-500/10', bar: 'bg-green-500' };
+  if (occ < cap) return { status: 'partial' as OccupancyStatus, label: 'Partial', color: 'text-yellow-400', border: 'border-yellow-500/30', bg: 'bg-yellow-500/10', bar: 'bg-yellow-500' };
+  return { status: 'full' as OccupancyStatus, label: 'Fully Occupied', color: 'text-red-400', border: 'border-red-500/30', bg: 'bg-red-500/10', bar: 'bg-red-500' };
 };
 
 const unitSchema = z.object({
   unitNumber: z.string().min(1, 'Unit identifier is required'),
   location: z.string().optional(),
   capacity: z.coerce.number().min(0),
-  status: z.enum(['Available', 'Fully Occupied', 'Partial', 'Maintenance']),
   notes: z.string().optional(),
 });
 
@@ -44,7 +49,6 @@ function EditUnitModal({ unit, onClose }: { unit: HousingUnit; onClose: () => vo
       unitNumber: unit.unitNumber,
       location: unit.location || '',
       capacity: unit.capacity,
-      status: unit.status as any || 'Available',
       notes: unit.notes || ''
     }
   });
@@ -76,27 +80,12 @@ function EditUnitModal({ unit, onClose }: { unit: HousingUnit; onClose: () => vo
                   <FormMessage />
                 </FormItem>
               )} />
-              <div className="grid grid-cols-2 gap-3">
-                <FormField control={form.control} name="capacity" render={({ field }) => (
-                  <FormItem><FormLabel>Capacity</FormLabel>
-                    <FormControl><Input type="number" {...field} className={iClass} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="status" render={({ field }) => (
-                  <FormItem><FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger className={iClass}><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="Available">Available</SelectItem>
-                        <SelectItem value="Partial">Partial</SelectItem>
-                        <SelectItem value="Fully Occupied">Fully Occupied</SelectItem>
-                        <SelectItem value="Maintenance">Maintenance</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )} />
-              </div>
+              <FormField control={form.control} name="capacity" render={({ field }) => (
+                <FormItem><FormLabel>Capacity</FormLabel>
+                  <FormControl><Input type="number" {...field} className={iClass} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <Button type="submit" className="w-full mt-4">Save Changes</Button>
             </form>
           </Form>
@@ -111,8 +100,7 @@ function AddResidentModal({ unit, onClose }: { unit: HousingUnit; onClose: () =>
   const [search, setSearch] = useState('');
 
   const filtered = employees.filter(e => 
-    e.name.toLowerCase().includes(search.toLowerCase()) || 
-    e.internalCode.toLowerCase().includes(search.toLowerCase())
+    matchesSearch(search, e.name, e.internalCode)
   );
 
   const assign = async (emp: any) => {
@@ -176,15 +164,14 @@ export default function Facilities() {
   const [editingCapacityId, setEditingCapacityId] = useState<string | null>(null);
   const [capacityDraft, setCapacityDraft] = useState('');
 
-  const filtered = housingUnits.filter(u =>
-    u.unitNumber.toLowerCase().includes(search.toLowerCase()) ||
-    u.location.toLowerCase().includes(search.toLowerCase()) ||
-    u.status.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = housingUnits.filter(u => {
+    const residentMatches = (u.residents || []).some(r => matchesSearch(search, r.name, r.code));
+    return matchesSearch(search, u.unitNumber, u.location) || residentMatches;
+  });
 
-  const totalCapacity = housingUnits.reduce((s, u) => s + u.capacity, 0);
-  const totalOccupants = housingUnits.reduce((s, u) => s + u.occupants, 0);
-  const availableUnits = housingUnits.filter(u => u.status === 'Available' || u.occupants < u.capacity).length;
+  const totalCapacity = housingUnits.reduce((s, u) => s + (u.capacity || 0), 0);
+  const totalOccupants = housingUnits.reduce((s, u) => s + (u.occupants || 0), 0);
+  const availableUnits = housingUnits.filter(u => (u.capacity || 0) > (u.occupants || 0)).length;
 
   return (
     <motion.div className="space-y-6" initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.08 } } }}>
@@ -201,7 +188,7 @@ export default function Facilities() {
           { label: 'Total Units', value: housingUnits.length, icon: Building2, color: 'text-blue-400' },
           { label: 'Total Capacity', value: totalCapacity, icon: BedDouble, color: 'text-primary' },
           { label: 'Current Occupants', value: totalOccupants, icon: Users, color: 'text-green-400' },
-          { label: 'Available Units', value: availableUnits, icon: CheckCircle2, color: 'text-emerald-400' },
+          { label: 'Available Beds', value: Math.max(0, totalCapacity - totalOccupants), icon: CheckCircle2, color: 'text-emerald-400' },
         ].map(kpi => (
           <Card key={kpi.label} className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -220,7 +207,7 @@ export default function Facilities() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search units..."
+            placeholder="Search units, locations, or residents..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9 bg-white/5 border-white/10"
@@ -246,14 +233,16 @@ export default function Facilities() {
             const cap = unit.capacity || 0;
             const occ = unit.occupants || 0;
             const occupancyPct = cap > 0 ? Math.round((occ / cap) * 100) : 0;
+            const info = getOccupancyInfo(unit);
+            
             return (
-              <Card key={unit.id} className="bg-white/5 border-white/10 backdrop-blur-sm hover:border-white/20 transition-colors group">
+              <Card key={unit.id} className={`bg-black/40 border-l-4 ${info.border} backdrop-blur-sm hover:border-white/20 transition-all group overflow-hidden`}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="flex-1">
                       <CardTitle className="text-base flex items-center justify-between gap-2 w-full">
-                        {unit.unitNumber}
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="truncate">{unit.unitNumber}</span>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           <button className="text-muted-foreground hover:text-white" title="Edit Unit" onClick={() => setEditUnit(unit)}>
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
@@ -269,15 +258,15 @@ export default function Facilities() {
                         </div>
                       )}
                     </div>
-                    <Badge className={`text-xs border ${statusColor[unit.status] ?? 'bg-white/10 text-white/70 border-white/20'}`}>
-                      {unit.status}
+                    <Badge className={`text-[10px] font-black uppercase tracking-tighter border ${info.bg} ${info.color} ${info.border}`}>
+                      {info.label}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Occupancy</span>
-                    <span className="font-medium flex items-center gap-1">
+                    <span className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Occupancy</span>
+                    <span className="font-mono text-xs flex items-center gap-1">
                       {occ} / 
                       {editingCapacityId === unit.id ? (
                         <input
@@ -302,44 +291,45 @@ export default function Facilities() {
                           className="hover:text-cyan-400 transition-colors underline underline-offset-2 decoration-dashed"
                           onClick={() => { setEditingCapacityId(unit.id); setCapacityDraft(String(cap)); }}
                         >
-                          {cap || <span className="text-amber-400">Set capacity</span>}
+                          {cap || <span className="text-amber-400">Set</span>}
                         </button>
                       )}
                     </span>
                   </div>
-                  <div className="w-full bg-white/10 rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full transition-all ${occupancyPct >= 100 ? 'bg-red-500' : occupancyPct >= 80 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                      style={{ width: `${Math.min(100, occupancyPct)}%` }}
+                  <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, occupancyPct)}%` }}
+                      className={`h-full rounded-full transition-all ${info.bar}`}
                     />
                   </div>
 
                   {/* Residents section — always visible */}
                   <div className="mt-4 pt-3 border-t border-white/5 space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Residents ({(unit.residents || []).length})</p>
-                      <button className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setAssignResident(unit)}>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Residents ({(unit.residents || []).length})</p>
+                      <button className="text-[10px] font-black text-cyan-400 hover:text-cyan-300 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest" onClick={() => setAssignResident(unit)}>
                         <Plus className="h-3 w-3" /> Add
                       </button>
                     </div>
                     {(unit.residents || []).length === 0 && (
-                      <button className="w-full text-xs text-muted-foreground hover:text-cyan-400 flex items-center justify-center gap-1 py-2 border border-dashed border-white/10 rounded hover:border-cyan-500/30 transition-colors" onClick={() => setAssignResident(unit)}>
-                        <Plus className="h-3 w-3" /> Add first resident
+                      <button className="w-full text-xs text-muted-foreground hover:text-cyan-400 flex items-center justify-center gap-1 py-4 border border-dashed border-white/5 rounded hover:border-cyan-500/20 transition-all bg-white/[0.02]" onClick={() => setAssignResident(unit)}>
+                        <Plus className="h-3 w-3" /> Add Resident
                       </button>
                     )}
                     {(unit.residents || []).map((r, i) => (
-                      <div key={i} className="group/res flex items-center justify-between text-sm bg-white/5 rounded px-2 py-1.5">
-                        <div className="flex items-center gap-2">
-                          <span>{r.name}</span>
+                      <div key={i} className="group/res flex items-center justify-between text-xs bg-white/5 border border-white/5 rounded-lg px-2.5 py-2 hover:bg-white/10 transition-colors">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <span className="truncate font-medium">{r.name}</span>
                           {r.code && (
-                            <Badge variant="outline" className="bg-cyan-500/10 text-cyan-400 border-cyan-500/30 text-[9px] px-1 font-mono">
+                            <Badge variant="outline" className="bg-cyan-500/5 text-cyan-400 border-cyan-500/20 text-[9px] px-1.5 font-mono flex-shrink-0">
                               {r.code}
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           {r.status === 'pending_review' && (
-                            <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] px-1 uppercase">Pending</Badge>
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[8px] px-1 uppercase font-black">Pending</Badge>
                           )}
                           <button className="text-muted-foreground hover:text-red-400 opacity-0 group-hover/res:opacity-100 transition-opacity" onClick={() => deleteHousingAssignment(unit.id, r.code, r.name)}>
                             <X className="h-3 w-3" />
@@ -349,7 +339,10 @@ export default function Facilities() {
                     ))}
                   </div>
                   {unit.notes && (
-                    <p className="text-xs text-muted-foreground border-t border-white/5 pt-2">{unit.notes}</p>
+                    <div className="flex items-start gap-2 border-t border-white/5 pt-2">
+                      <AlertTriangle size={10} className="text-muted-foreground mt-0.5" />
+                      <p className="text-[10px] text-muted-foreground leading-tight">{unit.notes}</p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
