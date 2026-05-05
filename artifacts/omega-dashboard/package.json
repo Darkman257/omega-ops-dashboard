@@ -24,6 +24,7 @@
     "analyze-excel": "node --env-file=.env --experimental-strip-types scripts/analyze-excel.ts",
     "import-fleet-links": "node --env-file=.env --experimental-strip-types scripts/import-fleet-links.ts",
     "import-housing": "node --env-file=.env --experimental-strip-types scripts/import-housing.ts",
+    "import-staff": "node --env-file=.env --experimental-strip-types scripts/import-staff.ts",
     "fleet-audit": "node --env-file=.env --experimental-strip-types scripts/fleet-link-audit.ts",
     "housing-audit": "node --env-file=.env --experimental-strip-types scripts/housing-link-audit.ts"
   },
