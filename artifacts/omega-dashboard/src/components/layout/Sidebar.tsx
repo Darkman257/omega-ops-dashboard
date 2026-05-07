@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Briefcase, Users, FileText,
   Upload, Settings, ChevronLeft, ChevronRight,
-  Banknote, Car, Building2, Package, CheckSquare
+  Banknote, Car, Building2, Package, CheckSquare,
+  ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -37,6 +38,7 @@ const NAV_GROUPS = [
       { name: 'Dashboard',  path: '/',           icon: LayoutDashboard },
       { name: 'Projects',   path: '/projects',   icon: Briefcase },
       { name: 'Staff',      path: '/staff',      icon: Users },
+      { name: 'Site Tasks', path: '/site-tasks', icon: ClipboardList },
     ],
   },
   {

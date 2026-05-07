@@ -50,6 +50,29 @@ export interface Employee {
   currentSite: string;
   internalCode: string;
   createdAt: string;
+  // Lifecycle fields
+  hireDate?: string;
+  exitDate?: string;
+  exitReason?: string;
+  lifecycleStatus: 'active' | 'onboarding' | 'suspended' | 'offboarding' | 'inactive';
+  clearanceStatus: 'not_required' | 'pending' | 'in_progress' | 'blocked' | 'cleared';
+  housingUnitId?: string;
+  assignedVehicleId?: string;
+  onboardingNotes?: string;
+  offboardingNotes?: string;
+}
+
+export interface EmployeeClearanceItem {
+  id: string;
+  staffId: string;
+  department: string;
+  itemTitle: string;
+  status: 'pending' | 'in_progress' | 'blocked' | 'cleared';
+  notes: string;
+  clearedBy?: string;
+  clearedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DocumentType {
@@ -135,6 +158,20 @@ export interface Payment {
   createdAt: string;
 }
 
+export interface SiteAdminTask {
+  id: string;
+  projectId?: string;
+  responsibleStaffId?: string;
+  taskCategory: string;
+  taskTitle: string;
+  taskDate: string;
+  status: 'pending' | 'in_progress' | 'done' | 'blocked';
+  priority: 'low' | 'normal' | 'high' | 'critical';
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface AppState {
   projects: Project[];
   employees: Employee[];
@@ -144,6 +181,8 @@ interface AppState {
   housingUnits: HousingUnit[];
   contracts: Contract[];
   payments: Payment[];
+  siteAdminTasks: SiteAdminTask[];
+  employeeClearanceItems: EmployeeClearanceItem[];
   totalLiquidity: number;
   loading: boolean;
   currentUser: {
@@ -196,6 +235,16 @@ interface AppContextType extends AppState {
   addPayment: (p: Omit<Payment, 'id' | 'createdAt'>) => void;
   updatePayment: (id: string, p: Partial<Payment>) => void;
   deletePayment: (id: string) => void;
+
+  addSiteAdminTask: (t: Omit<SiteAdminTask, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateSiteAdminTask: (id: string, t: Partial<SiteAdminTask>) => void;
+  deleteSiteAdminTask: (id: string) => void;
+
+  // Lifecycle & Clearance
+  startEmployeeOffboarding: (staffId: string, reason: string, notes: string) => Promise<void>;
+  updateClearanceItem: (itemId: string, patch: Partial<EmployeeClearanceItem>) => Promise<void>;
+  completeEmployeeClearance: (staffId: string) => Promise<void>;
+  cancelEmployeeOffboarding: (staffId: string) => Promise<void>;
 
   setTotalLiquidity: (amount: number) => void;
   importData: (type: 'staff' | 'documents' | 'payroll', data: any[]) => void;
@@ -259,6 +308,16 @@ const mapEmployee = (row: any): Employee => ({
   currentSite: row.current_site ?? '',
   internalCode: row.internal_code ?? row.internalCode ?? '',
   createdAt: row.created_at ?? new Date().toISOString(),
+  // Lifecycle
+  hireDate: row.hire_date,
+  exitDate: row.exit_date,
+  exitReason: row.exit_reason,
+  lifecycleStatus: row.lifecycle_status ?? 'active',
+  clearanceStatus: row.clearance_status ?? 'not_required',
+  housingUnitId: row.housing_unit_id,
+  assignedVehicleId: row.assigned_vehicle_id,
+  onboardingNotes: row.onboarding_notes,
+  offboardingNotes: row.offboarding_notes,
 });
 
 const unmapEmployee = (e: Partial<Employee>): any => {
@@ -271,6 +330,41 @@ const unmapEmployee = (e: Partial<Employee>): any => {
   if (e.status !== undefined) out.status = e.status.toLowerCase();
   if (e.basicSalary !== undefined) out.basic_salary = e.basicSalary;
   if (e.internalCode !== undefined) out.internal_code = e.internalCode;
+  
+  if (e.hireDate !== undefined) out.hire_date = e.hireDate;
+  if (e.exitDate !== undefined) out.exit_date = e.exitDate;
+  if (e.exitReason !== undefined) out.exit_reason = e.exitReason;
+  if (e.lifecycleStatus !== undefined) out.lifecycle_status = e.lifecycleStatus;
+  if (e.clearanceStatus !== undefined) out.clearance_status = e.clearanceStatus;
+  if (e.housingUnitId !== undefined) out.housing_unit_id = e.housingUnitId;
+  if (e.assignedVehicleId !== undefined) out.assigned_vehicle_id = e.assignedVehicleId;
+  if (e.onboardingNotes !== undefined) out.onboarding_notes = e.onboardingNotes;
+  if (e.offboardingNotes !== undefined) out.offboarding_notes = e.offboardingNotes;
+  return out;
+};
+
+const mapEmployeeClearanceItem = (row: any): EmployeeClearanceItem => ({
+  id: String(row.id),
+  staffId: String(row.staff_id),
+  department: row.department ?? '',
+  itemTitle: row.item_title ?? '',
+  status: row.status ?? 'pending',
+  notes: row.notes ?? '',
+  clearedBy: row.cleared_by ? String(row.cleared_by) : undefined,
+  clearedAt: row.cleared_at,
+  createdAt: row.created_at ?? new Date().toISOString(),
+  updatedAt: row.updated_at ?? new Date().toISOString(),
+});
+
+const unmapEmployeeClearanceItem = (item: Partial<EmployeeClearanceItem>): any => {
+  const out: any = {};
+  if (item.staffId !== undefined) out.staff_id = item.staffId;
+  if (item.department !== undefined) out.department = item.department;
+  if (item.itemTitle !== undefined) out.item_title = item.itemTitle;
+  if (item.status !== undefined) out.status = item.status;
+  if (item.notes !== undefined) out.notes = item.notes;
+  if (item.clearedBy !== undefined) out.cleared_by = item.clearedBy;
+  if (item.clearedAt !== undefined) out.cleared_at = item.clearedAt;
   return out;
 };
 
@@ -441,6 +535,33 @@ const unmapPayment = (p: Partial<Payment>): any => {
   return out;
 };
 
+const mapSiteAdminTask = (row: any): SiteAdminTask => ({
+  id: String(row.id),
+  projectId: row.project_id ? String(row.project_id) : undefined,
+  responsibleStaffId: row.responsible_staff_id ? String(row.responsible_staff_id) : undefined,
+  taskCategory: row.task_category ?? row.taskCategory ?? '',
+  taskTitle: row.task_title ?? row.taskTitle ?? '',
+  taskDate: row.task_date ?? row.taskDate ?? '',
+  status: row.status ?? 'pending',
+  priority: row.priority ?? 'normal',
+  notes: row.notes ?? '',
+  createdAt: row.created_at ?? new Date().toISOString(),
+  updatedAt: row.updated_at ?? new Date().toISOString(),
+});
+
+const unmapSiteAdminTask = (t: Partial<SiteAdminTask>): any => {
+  const out: any = {};
+  if (t.projectId !== undefined) out.project_id = t.projectId;
+  if (t.responsibleStaffId !== undefined) out.responsible_staff_id = t.responsibleStaffId;
+  if (t.taskCategory !== undefined) out.task_category = t.taskCategory;
+  if (t.taskTitle !== undefined) out.task_title = t.taskTitle;
+  if (t.taskDate !== undefined) out.task_date = t.taskDate;
+  if (t.status !== undefined) out.status = t.status;
+  if (t.priority !== undefined) out.priority = t.priority;
+  if (t.notes !== undefined) out.notes = t.notes;
+  return out;
+};
+
 
 // ─── Storage key for liquidity (no dedicated Supabase table) ─────────────────
 const LIQUIDITY_KEY = 'omega-liquidity';
@@ -458,6 +579,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     housingUnits: [],
     contracts: [],
     payments: [],
+    siteAdminTasks: [],
+    employeeClearanceItems: [],
     totalLiquidity: Number(localStorage.getItem(LIQUIDITY_KEY) ?? 0),
     loading: true,
     currentUser: JSON.parse(localStorage.getItem('omega-user') || JSON.stringify({
@@ -493,7 +616,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const refresh = async () => {
     setState(prev => ({ ...prev, loading: true }));
 
-    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData, contractsData, paymentsData, housingAssignmentsData] = await Promise.all([
+    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData, contractsData, paymentsData, housingAssignmentsData, tasksData, clearanceData] = await Promise.all([
       safeQuery('projects', 'created_at'),
       safeQuery('staff'),
       safeQuery('vehicles', 'created_at'),
@@ -503,6 +626,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       safeQuery('contracts'),
       safeQuery('payments'),
       safeQuery('housing_assignments'),
+      safeQuery('site_admin_tasks', 'created_at'),
+      safeQuery('employee_clearance_items', 'created_at'),
     ]);
 
     // robust fallback to localStorage if Supabase returns nothing or hasn't had the tables created yet
@@ -546,6 +671,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       housingUnits: mappedUnits,
       contracts: finalContracts,
       payments: finalPayments,
+      siteAdminTasks: tasksData.map(mapSiteAdminTask),
+      employeeClearanceItems: clearanceData.map(mapEmployeeClearanceItem),
       loading: false,
     }));
   };
@@ -936,6 +1063,141 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
+  const addSiteAdminTask = (t: Omit<SiteAdminTask, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const tempId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const newItem: SiteAdminTask = { ...t, id: tempId, createdAt: now, updatedAt: now };
+    setState(prev => ({ ...prev, siteAdminTasks: [newItem, ...prev.siteAdminTasks] }));
+    supabase.from('site_admin_tasks').insert([unmapSiteAdminTask(t)]).select().single()
+      .then(({ data, error }) => {
+        if (error) { console.error('addSiteAdminTask:', error); return; }
+        if (data) setState(prev => ({
+          ...prev,
+          siteAdminTasks: prev.siteAdminTasks.map(x => x.id === tempId ? mapSiteAdminTask(data) : x),
+        }));
+      });
+  };
+
+  const updateSiteAdminTask = (id: string, updates: Partial<SiteAdminTask>) => {
+    setState(prev => ({ ...prev, siteAdminTasks: prev.siteAdminTasks.map(t => t.id === id ? { ...t, ...updates } : t) }));
+    supabase.from('site_admin_tasks').update(unmapSiteAdminTask(updates)).eq('id', id)
+      .then(({ error }) => { if (error) console.error('updateSiteAdminTask:', error); });
+  };
+
+  const deleteSiteAdminTask = (id: string) => {
+    setState(prev => ({ ...prev, siteAdminTasks: prev.siteAdminTasks.filter(t => t.id !== id) }));
+    supabase.from('site_admin_tasks').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteSiteAdminTask:', error); });
+  };
+
+  // ─── Lifecycle & Clearance ──────────────────────────────────────────────────
+
+  const startEmployeeOffboarding = async (staffId: string, reason: string, notes: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 1. Update staff status
+    const { error: staffError } = await supabase.from('staff').update({
+      lifecycle_status: 'offboarding',
+      clearance_status: 'pending',
+      exit_reason: reason,
+      offboarding_notes: notes,
+      exit_date: today
+    }).eq('id', staffId);
+
+    if (staffError) {
+      console.error('startEmployeeOffboarding (staff):', staffError);
+      return;
+    }
+
+    // 2. Create default clearance items
+    const defaultItems = [
+      { dept: 'Admin', title: 'ID/Card/Files handover' },
+      { dept: 'Housing', title: 'Room/bed/unit released' },
+      { dept: 'Fleet', title: 'Vehicle/tools returned' },
+      { dept: 'Payroll', title: 'Advances/penalties/final settlement checked' },
+      { dept: 'Site', title: 'Site custody/materials returned' },
+      { dept: 'Safety', title: 'PPE/incident closure checked' },
+      { dept: 'Documents', title: 'Contracts/official docs archived' }
+    ];
+
+    const { error: itemsError } = await supabase.from('employee_clearance_items').insert(
+      defaultItems.map(item => ({
+        staff_id: staffId,
+        department: item.dept,
+        item_title: item.title,
+        status: 'pending'
+      }))
+    );
+
+    if (itemsError) {
+      console.error('startEmployeeOffboarding (items):', itemsError);
+    }
+
+    refresh();
+  };
+
+  const updateClearanceItem = async (itemId: string, patch: Partial<EmployeeClearanceItem>) => {
+    const dbPatch = unmapEmployeeClearanceItem(patch);
+    if (patch.status === 'cleared') {
+      dbPatch.cleared_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase.from('employee_clearance_items').update(dbPatch).eq('id', itemId);
+    if (error) {
+      console.error('updateClearanceItem:', error);
+      return;
+    }
+
+    // After updating item, check if all items for this staff are cleared
+    const item = state.employeeClearanceItems.find(i => i.id === itemId);
+    if (item && patch.status === 'cleared') {
+      const staffId = item.staffId;
+      const allItems = state.employeeClearanceItems.filter(i => i.staffId === staffId);
+      const otherItemsCleared = allItems.every(i => i.id === itemId || i.status === 'cleared');
+      
+      if (otherItemsCleared) {
+        await supabase.from('staff').update({ clearance_status: 'cleared' }).eq('id', staffId);
+      } else {
+        await supabase.from('staff').update({ clearance_status: 'in_progress' }).eq('id', staffId);
+      }
+    } else if (item && patch.status === 'blocked') {
+      await supabase.from('staff').update({ clearance_status: 'blocked' }).eq('id', item.staffId);
+    }
+
+    refresh();
+  };
+
+  const completeEmployeeClearance = async (staffId: string) => {
+    const { error } = await supabase.from('staff').update({
+      lifecycle_status: 'inactive',
+      status: 'inactive'
+    }).eq('id', staffId);
+
+    if (error) {
+      console.error('completeEmployeeClearance:', error);
+      return;
+    }
+
+    refresh();
+  };
+
+  const cancelEmployeeOffboarding = async (staffId: string) => {
+    const { error } = await supabase.from('staff').update({
+      lifecycle_status: 'active',
+      clearance_status: 'not_required',
+      exit_reason: null,
+      exit_date: null,
+      offboarding_notes: null
+    }).eq('id', staffId);
+
+    if (error) {
+      console.error('cancelEmployeeOffboarding:', error);
+      return;
+    }
+
+    refresh();
+  };
+
   return (
     <AppContext.Provider value={{
       ...state,
@@ -950,6 +1212,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addHousingAssignment, deleteHousingAssignment,
       addContract, updateContract, deleteContract,
       addPayment, updatePayment, deletePayment,
+      addSiteAdminTask, updateSiteAdminTask, deleteSiteAdminTask,
+      startEmployeeOffboarding, updateClearanceItem, completeEmployeeClearance, cancelEmployeeOffboarding,
       setTotalLiquidity,
       importData,
       updateUser,
