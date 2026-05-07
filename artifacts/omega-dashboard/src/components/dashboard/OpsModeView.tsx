@@ -13,9 +13,14 @@ import {
   Zap,
   Radar,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  ClipboardList,
+  LogOut,
+  ShieldCheck,
+  Ban
 } from 'lucide-react';
 import { LivingSystemData } from '@/lib/financials';
+import { SiteAdminTask, Employee } from '@/context/AppContext';
 import { RealtimeOpsFeed } from '@/reference-patterns/omega/RealtimeOpsFeed';
 import { AttendanceMetrics } from '@/hooks/useAttendanceMetrics';
 import { OpsMaestroReport } from '@/lib/opsInsights';
@@ -29,6 +34,8 @@ interface OpsModeViewProps {
   attendanceMetrics: AttendanceMetrics;
   housingUnits: any[];
   maestroReport: OpsMaestroReport;
+  siteAdminTasks: SiteAdminTask[];
+  employees: Employee[];
 }
 
 export const OpsModeView: React.FC<OpsModeViewProps> = ({
@@ -39,12 +46,24 @@ export const OpsModeView: React.FC<OpsModeViewProps> = ({
   vehicles,
   attendanceMetrics,
   housingUnits,
-  maestroReport
+  maestroReport,
+  siteAdminTasks,
+  employees
 }) => {
+  const pendingTasks = siteAdminTasks.filter(t => t.status === 'pending').length;
+  const criticalTasks = siteAdminTasks.filter(t => t.priority === 'critical' && t.status !== 'done').length;
+  
+  const offboardingCount = employees.filter(e => e.lifecycleStatus === 'offboarding').length;
+  const clearancePending = employees.filter(e => e.clearanceStatus === 'pending').length;
+  const clearanceBlocked = employees.filter(e => e.clearanceStatus === 'blocked').length;
+
   const opsStats = [
     { label: 'Labor Force', value: activeEmployees, total: totalEmployees, icon: Users, color: 'text-emerald-400', desc: 'On duty now' },
     { label: 'Fleet Status', value: activeVehicles, total: vehicles.length, icon: Truck, color: 'text-cyan-400', desc: 'Active units' },
-    { label: 'Housing', value: housingUnits.reduce((acc, u) => acc + (u.occupants || 0), 0), total: housingUnits.reduce((acc, u) => acc + (u.capacity || 0), 0), icon: Home, color: 'text-amber-400', desc: 'Beds occupied' }
+    { label: 'Housing', value: housingUnits.reduce((acc, u) => acc + (u.occupants || 0), 0), total: housingUnits.reduce((acc, u) => acc + (u.capacity || 0), 0), icon: Home, color: 'text-amber-400', desc: 'Beds occupied' },
+    { label: 'Site Tasks', value: pendingTasks, total: pendingTasks + criticalTasks, icon: ClipboardList, color: 'text-purple-400', desc: `${criticalTasks} critical tasks` },
+    { label: 'Offboarding', value: offboardingCount, total: 0, icon: LogOut, color: 'text-red-400', desc: 'Employees leaving' },
+    { label: 'Clearance', value: clearancePending, total: clearancePending + clearanceBlocked, icon: ShieldCheck, color: 'text-blue-400', desc: `${clearanceBlocked} blocked` }
   ];
 
   return (
@@ -151,7 +170,7 @@ export const OpsModeView: React.FC<OpsModeViewProps> = ({
       </div>
 
       {/* Live Operational Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
         {opsStats.map((stat, i) => (
           <motion.div 
             key={i}

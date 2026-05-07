@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, LogOut, ShieldCheck, XCircle, AlertTriangle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +15,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import * as z from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
 import { normalizeSearchText, matchesSearch } from '@/lib/searchUtils';
+import { EmployeeClearanceModal } from '@/components/EmployeeClearanceModal';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -126,7 +128,9 @@ function AddEmployeeModal({ open, onOpenChange }: { open: boolean; onOpenChange:
       ...values, 
       passportExpiry: values.passportExpiry || '', 
       currentSite: (values as any).currentSite || '',
-      internalCode: (values as any).internalCode || ''
+      internalCode: (values as any).internalCode || '',
+      lifecycleStatus: 'active',
+      clearanceStatus: 'not_required'
     });
     onOpenChange(false);
     form.reset();
@@ -205,11 +209,71 @@ function EditEmployeeModal({ employee, onClose }: { employee: Employee; onClose:
   );
 }
 
+function StartOffboardingModal({ employee, open, onClose }: { employee: Employee; open: boolean; onClose: () => void }) {
+  const { startEmployeeOffboarding } = useAppContext();
+  const [reason, setReason] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const handleSubmit = async () => {
+    if (!reason) return;
+    await startEmployeeOffboarding(employee.id, reason, notes);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-[450px] bg-[#0A0A0A] border-white/10 text-foreground">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <LogOut className="text-red-500" size={18} />
+            Start Offboarding
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">Collect exit details for {employee.name}</p>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Exit Reason</label>
+            <Select onValueChange={setReason} value={reason}>
+              <SelectTrigger className="bg-white/5 border-white/10">
+                <SelectValue placeholder="Select reason" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Resignation">Resignation</SelectItem>
+                <SelectItem value="Termination">Termination</SelectItem>
+                <SelectItem value="End of Contract">End of Contract</SelectItem>
+                <SelectItem value="Retirement">Retirement</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Notes</label>
+            <Textarea 
+              placeholder="Internal notes regarding this exit..."
+              className="bg-white/5 border-white/10 min-h-[100px] resize-none"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button className="bg-red-600 hover:bg-red-500 text-white font-bold" onClick={handleSubmit} disabled={!reason}>
+            Confirm & Start Clearance
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Staff() {
-  const { employees, deleteEmployee, siteFilter, loading } = useAppContext();
+  const { employees, deleteEmployee, cancelEmployeeOffboarding, siteFilter, loading } = useAppContext();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [offboardingEmployee, setOffboardingEmployee] = useState<Employee | null>(null);
+  const [clearanceEmployee, setClearanceEmployee] = useState<Employee | null>(null);
 
   const filtered = employees.filter(e => {
     const matchesSearchText = matchesSearch(search, e.name, e.department, e.role, e.internalCode);
@@ -240,6 +304,20 @@ export default function Staff() {
 
       <AddEmployeeModal open={addOpen} onOpenChange={setAddOpen} />
       {editEmployee && <EditEmployeeModal employee={editEmployee} onClose={() => setEditEmployee(null)} />}
+      {offboardingEmployee && (
+        <StartOffboardingModal 
+          employee={offboardingEmployee} 
+          open={!!offboardingEmployee} 
+          onClose={() => setOffboardingEmployee(null)} 
+        />
+      )}
+      {clearanceEmployee && (
+        <EmployeeClearanceModal 
+          employee={clearanceEmployee} 
+          isOpen={!!clearanceEmployee} 
+          onClose={() => setClearanceEmployee(null)} 
+        />
+      )}
 
       {employees.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -255,12 +333,11 @@ export default function Staff() {
               <TableRow className="border-white/10 hover:bg-transparent">
                 <TableHead className="text-muted-foreground w-20">Code</TableHead>
                 <TableHead className="text-muted-foreground">Employee</TableHead>
-                <TableHead className="text-muted-foreground">Role</TableHead>
-                <TableHead className="text-muted-foreground">Contact</TableHead>
+                <TableHead className="text-muted-foreground">Lifecycle</TableHead>
+                <TableHead className="text-muted-foreground">Clearance</TableHead>
                 <TableHead className="text-muted-foreground">Insurance</TableHead>
                 <TableHead className="text-muted-foreground">Compensation</TableHead>
-                <TableHead className="text-muted-foreground">Status</TableHead>
-                <TableHead className="text-muted-foreground w-20"></TableHead>
+                <TableHead className="text-muted-foreground text-right w-[180px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -295,10 +372,32 @@ export default function Staff() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">{emp.role}</TableCell>
                   <TableCell>
-                    <div className="text-sm">{emp.email}</div>
-                    <div className="text-xs text-muted-foreground">{emp.phone}</div>
+                    <div className="space-y-1">
+                      <Badge variant="outline" className={`text-[10px] uppercase tracking-widest px-2 ${
+                        emp.lifecycleStatus === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                        emp.lifecycleStatus === 'offboarding' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                        'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                      }`}>
+                        {emp.lifecycleStatus}
+                      </Badge>
+                      <div className="text-[10px] text-muted-foreground">{emp.role}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {emp.clearanceStatus !== 'not_required' ? (
+                      <Badge variant="outline" className={`text-[10px] uppercase tracking-widest px-2 flex items-center gap-1 w-fit ${
+                        emp.clearanceStatus === 'cleared' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                        emp.clearanceStatus === 'blocked' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                        'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                      }`}>
+                        {emp.clearanceStatus === 'cleared' ? <ShieldCheck size={10} /> : 
+                         emp.clearanceStatus === 'blocked' ? <AlertTriangle size={10} /> : <Clock size={10} />}
+                        {emp.clearanceStatus}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground/30 text-[10px]">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
@@ -322,26 +421,47 @@ export default function Staff() {
                       <span className="text-muted-foreground/40 text-xs">—</span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={emp.status === 'Active' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-gray-500/20 text-gray-400 border-gray-500/30'}>
-                      {emp.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1.5">
+                      {emp.lifecycleStatus === 'active' && (
+                        <Button
+                          variant="outline" size="sm"
+                          className="h-8 text-[10px] font-black uppercase tracking-widest bg-red-500/5 hover:bg-red-500/10 text-red-400 border-red-500/20"
+                          onClick={(e) => { e.stopPropagation(); setOffboardingEmployee(emp); }}
+                        >
+                          <LogOut size={12} className="mr-1" /> Exit
+                        </Button>
+                      )}
+                      {emp.lifecycleStatus === 'offboarding' && (
+                        <>
+                          <Button
+                            variant="outline" size="sm"
+                            className="h-8 text-[10px] font-black uppercase tracking-widest bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 border-blue-500/20"
+                            onClick={(e) => { e.stopPropagation(); setClearanceEmployee(emp); }}
+                          >
+                            <ShieldCheck size={12} className="mr-1" /> Clearance
+                          </Button>
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                            onClick={(e) => { e.stopPropagation(); cancelEmployeeOffboarding(emp.id); }}
+                            title="Cancel Exit"
+                          >
+                            <XCircle size={14} />
+                          </Button>
+                        </>
+                      )}
                       <Button
                         variant="ghost" size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-primary"
-                        onClick={() => setEditEmployee(emp)}
-                        data-testid={`button-edit-employee-${emp.id}`}
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        onClick={(e) => { e.stopPropagation(); setEditEmployee(emp); }}
                       >
                         <Pencil size={13} />
                       </Button>
                       <Button
                         variant="ghost" size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => deleteEmployee(emp.id)}
-                        data-testid={`button-delete-employee-${emp.id}`}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); deleteEmployee(emp.id); }}
                       >
                         <Trash2 size={13} />
                       </Button>

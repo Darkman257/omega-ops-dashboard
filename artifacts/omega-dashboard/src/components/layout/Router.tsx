@@ -14,6 +14,7 @@ import Documents from "@/pages/Documents";
 import Import from "@/pages/Import";
 import Settings from "@/pages/Settings";
 import Profile from "@/pages/Profile";
+import SiteAdminTasks from "@/pages/SiteAdminTasks";
 import NotFound from "@/pages/not-found";
 
 export function Router() {
@@ -28,6 +29,7 @@ export function Router() {
         <Route path="/fleet" component={Fleet} />
         <Route path="/facilities" component={Facilities} />
         <Route path="/assets" component={Assets} />
+        <Route path="/site-tasks" component={SiteAdminTasks} />
         <Route path="/approvals" component={Approvals} />
         <Route path="/documents" component={Documents} />
         <Route path="/import" component={Import} />

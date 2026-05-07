@@ -59,7 +59,7 @@ const container = {
 const lastSentAlertsCache: Record<string, number> = {};
 
 export default function Dashboard() {
-  const { projects, payrollRecords, employees, vehicles, documents, housingUnits } = useAppContext();
+  const { projects, payrollRecords, employees, vehicles, documents, housingUnits, siteAdminTasks } = useAppContext();
   const [mode, setMode] = useState<'OWNER' | 'OPS' | 'AI' | 'CONTRACTS'>('OWNER');
   const [handledAlerts, setHandledAlerts] = useState<string[]>([]);
   const [autonomyMode, setAutonomyMode] = useState<'OFF' | 'ASSISTED' | 'AUTO_SAFE'>('AUTO_SAFE');
@@ -245,6 +245,8 @@ export default function Dashboard() {
               attendanceMetrics={attendanceMetrics}
               housingUnits={housingUnits}
               maestroReport={maestroReport}
+              siteAdminTasks={siteAdminTasks}
+              employees={employees}
             />
           )}
           {mode === 'AI' && (
