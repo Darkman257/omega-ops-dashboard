@@ -47,3 +47,15 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Local Environment Files (NEXUS Security Cleanup)
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+*.local
+**/*.local
+artifacts/api-server/.env.local
+artifacts/omega-dashboard/.env
+artifacts/omega-dashboard/.env.production
