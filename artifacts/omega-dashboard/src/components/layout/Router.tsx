@@ -5,6 +5,7 @@ import Dashboard from "@/pages/Dashboard";
 import Projects from "@/pages/Projects";
 import ProjectDetail from "@/pages/ProjectDetail";
 import Staff from "@/pages/Staff";
+import EmployeeDetail from "@/pages/EmployeeDetail";
 import Payroll from "@/pages/Payroll";
 import Fleet from "@/pages/Fleet";
 import Facilities from "@/pages/Facilities";
@@ -25,6 +26,7 @@ export function Router() {
         <Route path="/projects" component={Projects} />
         <Route path="/projects/:id" component={ProjectDetail} />
         <Route path="/staff" component={Staff} />
+        <Route path="/staff/:id" component={EmployeeDetail} />
         <Route path="/payroll" component={Payroll} />
         <Route path="/fleet" component={Fleet} />
         <Route path="/facilities" component={Facilities} />

@@ -329,7 +329,11 @@ const unmapEmployee = (e: Partial<Employee>): any => {
   if (e.email !== undefined) out.email = e.email;
   if (e.status !== undefined) out.status = e.status.toLowerCase();
   if (e.basicSalary !== undefined) out.basic_salary = e.basicSalary;
+  if (e.siteAllowance !== undefined) out.site_allowance = e.siteAllowance;
+  if (e.currentSite !== undefined) out.current_site = e.currentSite;
   if (e.internalCode !== undefined) out.internal_code = e.internalCode;
+  if (e.passportExpiry !== undefined) out.passport_expiry = e.passportExpiry;
+  if (e.insuranceStatus !== undefined) out.insurance_status = e.insuranceStatus;
   
   if (e.hireDate !== undefined) out.hire_date = e.hireDate;
   if (e.exitDate !== undefined) out.exit_date = e.exitDate;
