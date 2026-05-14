@@ -72,3 +72,12 @@ artifacts/staff-data-audit/**/*.xls
 artifacts/staff-data-audit/**/*.json
 artifacts/staff-data-audit/**/raw/
 artifacts/staff-data-audit/**/exports/
+
+# Legacy private operational data
+artifacts/omega-dashboard/data/**/*.xlsx
+artifacts/omega-dashboard/data/**/*.xls
+artifacts/omega-dashboard/data/**/*.csv
+artifacts/omega-dashboard/data/**/*.json
+
+# Keep diagrams/docs trackable unless explicitly reviewed
+!artifacts/omega-dashboard/data/**/*.vsdx
