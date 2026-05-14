@@ -64,3 +64,11 @@ artifacts/omega-dashboard/.env.production
 .vscode/
 agent.pid
 *.pid
+
+# Private staff audit data
+artifacts/staff-data-audit/**/*.csv
+artifacts/staff-data-audit/**/*.xlsx
+artifacts/staff-data-audit/**/*.xls
+artifacts/staff-data-audit/**/*.json
+artifacts/staff-data-audit/**/raw/
+artifacts/staff-data-audit/**/exports/
