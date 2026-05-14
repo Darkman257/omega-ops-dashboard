@@ -59,3 +59,8 @@ Thumbs.db
 artifacts/api-server/.env.local
 artifacts/omega-dashboard/.env
 artifacts/omega-dashboard/.env.production
+
+# Workspace Artifacts
+.vscode/
+agent.pid
+*.pid
