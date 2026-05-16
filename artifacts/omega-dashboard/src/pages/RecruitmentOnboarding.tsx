@@ -4,7 +4,7 @@ import {
   ClipboardList, Search, User, Phone, Mail, 
   ExternalLink, Copy, Calendar, MessageSquare,
   Clock, MapPin, Briefcase, Info, ChevronRight,
-  ArrowRight, CheckCircle2, AlertCircle, X
+  ArrowRight, CheckCircle2, AlertCircle, X, ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import { useAppContext, OnboardingQueueEntry } from '@/context/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -82,7 +82,12 @@ export default function RecruitmentOnboarding() {
             <ClipboardList className="text-primary h-8 w-8" />
             Recruitment Onboarding
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <div className="mt-2 flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-black uppercase tracking-widest px-2">
+              <ShieldCheck size={10} className="mr-1" /> Recruitment Data Guardrails
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-2 text-sm">
             Review candidates accepted from Recruitment Hub.
           </p>
         </div>
@@ -314,6 +319,12 @@ export default function RecruitmentOnboarding() {
                   <span>Awaiting Activation Engine</span>
                   <ArrowRight size={16} className="ml-2 opacity-30 group-hover:translate-x-1 transition-transform" />
                 </Button>
+                <div className="mt-3 flex items-start gap-2 px-2">
+                  <ShieldAlert size={12} className="text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-[9px] font-bold text-amber-500/80 uppercase leading-tight tracking-wide">
+                    Activation Blocked: Phase 1 Compliance requires manual staff record entry. Automatic conversion is disabled for legal verification.
+                  </p>
+                </div>
               </div>
             </>
           )}

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Plus, Search, Pencil, Trash2, LogOut, ShieldCheck, XCircle, AlertTriangle, Clock, Calendar, MapPin, Phone } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, LogOut, ShieldCheck, XCircle, AlertTriangle, Clock, Calendar, MapPin, Phone, ShieldAlert } from 'lucide-react';
+import { evaluateOmegaAction } from '@/compliance/complianceGuards';
 import { useForm } from 'react-hook-form';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -175,8 +176,22 @@ function AddEmployeeModal({ open, onOpenChange }: { open: boolean; onOpenChange:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] bg-card border-white/10 text-foreground p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/10">
-          <DialogTitle className="text-lg font-semibold">Add New Employee</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-lg font-semibold">Add New Employee</DialogTitle>
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              <ShieldCheck size={12} className="text-emerald-500" />
+              <span className="text-[10px] font-black text-emerald-500/80 uppercase tracking-widest">Compliance Guard</span>
+            </div>
+          </div>
         </DialogHeader>
+        <div className="px-6 pt-4">
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 flex gap-3 items-start">
+            <ShieldAlert size={16} className="text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-[10px] font-bold text-amber-500/90 uppercase leading-tight tracking-wide">
+              Draft Entry Only: Manual validation of National ID and Social Insurance status required for Egyptian compliance.
+            </p>
+          </div>
+        </div>
         <ScrollArea className="max-h-[72vh]">
           <div className="px-6 py-4">
             <Form {...form}>
@@ -330,7 +345,14 @@ export default function Staff() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Staff Directory</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Staff Directory</h1>
+          <div className="mt-2 flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[9px] font-black uppercase tracking-widest px-2">
+              <ShieldCheck size={10} className="mr-1" /> Egyptian Labor Law Guardrails v1.0
+            </Badge>
+          </div>
+        </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -533,7 +555,11 @@ export default function Staff() {
                       <Button
                         variant="ghost" size="icon"
                         className="h-8 w-8 text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-500/10 transition-all shrink-0"
-                        onClick={(e) => { e.stopPropagation(); deleteEmployee(emp.id); }}
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          const guard = evaluateOmegaAction('DELETE_STAFF');
+                          alert(guard.message);
+                        }}
                       >
                         <Trash2 size={13} />
                       </Button>

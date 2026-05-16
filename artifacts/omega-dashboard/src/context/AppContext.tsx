@@ -655,7 +655,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const refresh = async () => {
     setState(prev => ({ ...prev, loading: true }));
 
-    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData, contractsData, paymentsData, housingAssignmentsData, tasksData, clearanceData] = await Promise.all([
+    const [projectsData, staffData, vehiclesData, payrollData, docsData, housingData, contractsData, paymentsData, housingAssignmentsData, tasksData, clearanceData, onboardingData] = await Promise.all([
       safeQuery('projects', 'created_at'),
       safeQuery('staff'),
       safeQuery('vehicles', 'created_at'),
@@ -713,7 +713,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       payments: finalPayments,
       siteAdminTasks: tasksData.map(mapSiteAdminTask),
       employeeClearanceItems: clearanceData.map(mapEmployeeClearanceItem),
-      onboardingQueue: (arguments[0][10] || []).map(mapOnboardingQueueEntry),
+      onboardingQueue: (onboardingData || []).map(mapOnboardingQueueEntry),
       loading: false,
     }));
   };
