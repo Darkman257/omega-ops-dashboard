@@ -17,10 +17,12 @@ import {
   ClipboardList,
   LogOut,
   ShieldCheck,
-  Ban
+  Ban,
+  UserPlus
 } from 'lucide-react';
 import { LivingSystemData } from '@/lib/financials';
-import { SiteAdminTask, Employee } from '@/context/AppContext';
+import { SiteAdminTask, Employee, OnboardingQueueEntry } from '@/context/AppContext';
+import { useLocation } from 'wouter';
 import { RealtimeOpsFeed } from '@/reference-patterns/omega/RealtimeOpsFeed';
 import { AttendanceMetrics } from '@/hooks/useAttendanceMetrics';
 import { OpsMaestroReport } from '@/lib/opsInsights';
@@ -36,6 +38,7 @@ interface OpsModeViewProps {
   maestroReport: OpsMaestroReport;
   siteAdminTasks: SiteAdminTask[];
   employees: Employee[];
+  onboardingQueue: OnboardingQueueEntry[];
 }
 
 export const OpsModeView: React.FC<OpsModeViewProps> = ({
@@ -48,8 +51,10 @@ export const OpsModeView: React.FC<OpsModeViewProps> = ({
   housingUnits,
   maestroReport,
   siteAdminTasks,
-  employees
+  employees,
+  onboardingQueue
 }) => {
+  const [, navigate] = useLocation();
   const pendingTasks = siteAdminTasks.filter(t => t.status === 'pending').length;
   const criticalTasks = siteAdminTasks.filter(t => t.priority === 'critical' && t.status !== 'done').length;
   
@@ -63,7 +68,8 @@ export const OpsModeView: React.FC<OpsModeViewProps> = ({
     { label: 'Housing', value: housingUnits.reduce((acc, u) => acc + (u.occupants || 0), 0), total: housingUnits.reduce((acc, u) => acc + (u.capacity || 0), 0), icon: Home, color: 'text-amber-400', desc: 'Beds occupied' },
     { label: 'Site Tasks', value: pendingTasks, total: pendingTasks + criticalTasks, icon: ClipboardList, color: 'text-purple-400', desc: `${criticalTasks} critical tasks` },
     { label: 'Offboarding', value: offboardingCount, total: 0, icon: LogOut, color: 'text-red-400', desc: 'Employees leaving' },
-    { label: 'Clearance', value: clearancePending, total: clearancePending + clearanceBlocked, icon: ShieldCheck, color: 'text-blue-400', desc: `${clearanceBlocked} blocked` }
+    { label: 'Clearance', value: clearancePending, total: clearancePending + clearanceBlocked, icon: ShieldCheck, color: 'text-blue-400', desc: `${clearanceBlocked} blocked` },
+    { label: 'Recruitment', value: onboardingQueue.filter(q => q.onboardingStatus === 'pending_omega_review').length, total: onboardingQueue.length, icon: UserPlus, color: 'text-amber-400', desc: 'Pending review' }
   ];
 
   return (
@@ -234,6 +240,32 @@ export const OpsModeView: React.FC<OpsModeViewProps> = ({
                 Waiting for live attendance feed...
               </div>
             )}
+          </div>
+
+          <div className="p-5 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <Users size={14} className="text-amber-400" /> Recruitment Queue
+              </h3>
+              <button 
+                onClick={() => navigate('/recruitment-onboarding')}
+                className="text-[10px] font-black uppercase text-primary hover:underline"
+              >
+                View All
+              </button>
+            </div>
+            <div className="space-y-3">
+              {onboardingQueue.length > 0 ? (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                  <span className="text-[10px] font-black uppercase text-foreground">Pending Review</span>
+                  <span className="text-[10px] font-bold text-amber-400">
+                    {onboardingQueue.filter(q => q.onboardingStatus === 'pending_omega_review').length} Candidates
+                  </span>
+                </div>
+              ) : (
+                <div className="text-[10px] text-muted-foreground italic">Queue empty.</div>
+              )}
+            </div>
           </div>
 
           <div className="p-5 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-md">

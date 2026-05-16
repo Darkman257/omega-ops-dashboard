@@ -106,6 +106,27 @@ export interface PayrollRecord {
   createdAt: string;
 }
 
+export interface OnboardingQueueEntry {
+  id: string;
+  candidateId: string;
+  onboardingStatus: 'pending_omega_review' | 'needs_data' | 'approved' | 'rejected';
+  isApproved: boolean;
+  approvedAt?: string;
+  omegaStaffId?: string;
+  mappedPayload: {
+    full_name: string;
+    phone: string;
+    email?: string;
+    job_title?: string;
+    position?: string;
+    source?: string;
+    queued_at?: string;
+    notes?: string;
+    summary?: string;
+  };
+  createdAt: string;
+}
+
 export interface Vehicle {
   id: string;
   carName: string;
@@ -183,6 +204,7 @@ interface AppState {
   payments: Payment[];
   siteAdminTasks: SiteAdminTask[];
   employeeClearanceItems: EmployeeClearanceItem[];
+  onboardingQueue: OnboardingQueueEntry[];
   totalLiquidity: number;
   loading: boolean;
   currentUser: {
@@ -248,6 +270,7 @@ interface AppContextType extends AppState {
 
   setTotalLiquidity: (amount: number) => void;
   importData: (type: 'staff' | 'documents' | 'payroll', data: any[]) => void;
+  onboardingQueue: OnboardingQueueEntry[];
   updateUser: (u: Partial<AppState['currentUser']>) => void;
 }
 
@@ -566,6 +589,17 @@ const unmapSiteAdminTask = (t: Partial<SiteAdminTask>): any => {
   return out;
 };
 
+const mapOnboardingQueueEntry = (row: any): OnboardingQueueEntry => ({
+  id: String(row.id),
+  candidateId: String(row.candidate_id),
+  onboardingStatus: row.onboarding_status ?? 'pending_omega_review',
+  isApproved: !!row.is_approved,
+  approvedAt: row.approved_at,
+  omegaStaffId: row.omega_staff_id,
+  mappedPayload: typeof row.mapped_payload === 'string' ? JSON.parse(row.mapped_payload) : (row.mapped_payload || {}),
+  createdAt: row.created_at ?? new Date().toISOString(),
+});
+
 
 // ─── Storage key for liquidity (no dedicated Supabase table) ─────────────────
 const LIQUIDITY_KEY = 'omega-liquidity';
@@ -585,6 +619,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     payments: [],
     siteAdminTasks: [],
     employeeClearanceItems: [],
+    onboardingQueue: [],
     totalLiquidity: Number(localStorage.getItem(LIQUIDITY_KEY) ?? 0),
     loading: true,
     currentUser: JSON.parse(localStorage.getItem('omega-user') || JSON.stringify({
@@ -632,6 +667,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       safeQuery('housing_assignments'),
       safeQuery('site_admin_tasks', 'created_at'),
       safeQuery('employee_clearance_items', 'created_at'),
+      safeQuery('recruitment_onboarding_queue', 'created_at'),
     ]);
 
     // robust fallback to localStorage if Supabase returns nothing or hasn't had the tables created yet
@@ -677,6 +713,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       payments: finalPayments,
       siteAdminTasks: tasksData.map(mapSiteAdminTask),
       employeeClearanceItems: clearanceData.map(mapEmployeeClearanceItem),
+      onboardingQueue: (arguments[0][10] || []).map(mapOnboardingQueueEntry),
       loading: false,
     }));
   };

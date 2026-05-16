@@ -38,7 +38,8 @@ const NAV_GROUPS = [
       { name: 'Dashboard',  path: '/',           icon: LayoutDashboard },
       { name: 'Projects',   path: '/projects',   icon: Briefcase },
       { name: 'Staff',      path: '/staff',      icon: Users },
-      { name: 'Site Tasks', path: '/site-tasks', icon: ClipboardList },
+      { name: 'Recruitment Onboarding', path: '/recruitment-onboarding', icon: ClipboardList },
+      { name: 'Site Tasks', path: '/site-tasks', icon: CheckSquare },
     ],
   },
   {
