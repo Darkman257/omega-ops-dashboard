@@ -2,12 +2,13 @@
 import { Router, Response } from "express";
 import { requireAuth, AuthenticatedRequest } from "../middlewares/auth.js";
 import { createClient } from "@supabase/supabase-js";
+import { normalizeProjectCode, normalizeJobRoleCode } from "../lib/codeEngine.js";
 
 const router = Router();
 
 router.post("/activate", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { queueId, reviewerNote } = req.body;
+    const { queueId, reviewerNote, projectCode, jobCode } = req.body;
 
     // 1. Structural UUID Validation
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -22,7 +23,36 @@ router.post("/activate", requireAuth, async (req: AuthenticatedRequest, res: Res
 
     const reviewerNoteSanitized = reviewerNote ? String(reviewerNote).trim() : null;
 
-    // 2. Robust E2E Production RBAC: Verify email against explicit allowed list env variable
+    // 2. Validate and normalize optional projectCode / jobCode overrides
+    const overrides: Record<string, any> = {};
+
+    if (projectCode !== undefined && projectCode !== null && projectCode !== "") {
+      const normProject = normalizeProjectCode(String(projectCode));
+      if (!normProject) {
+        return res.status(400).json({
+          success: false,
+          staff_id: null,
+          internal_code: null,
+          error_reason: `Invalid or unsupported project code: '${projectCode}'. Allowed values: OB, LL, LR, MVA.`
+        });
+      }
+      overrides.project_code = normProject;
+    }
+
+    if (jobCode !== undefined && jobCode !== null && jobCode !== "") {
+      const normJob = normalizeJobRoleCode(String(jobCode));
+      if (!normJob) {
+        return res.status(400).json({
+          success: false,
+          staff_id: null,
+          internal_code: null,
+          error_reason: `Invalid or unsupported job role code: '${jobCode}'. Please use one of the 20 approved operational role identifiers.`
+        });
+      }
+      overrides.job_code = normJob;
+    }
+
+    // 3. Robust E2E Production RBAC: Verify email against explicit allowed list env variable
     const email = req.user?.email || "";
     const allowedEmailsEnv = process.env.STAFF_ACTIVATION_ALLOWED_EMAILS || "";
 
@@ -76,10 +106,11 @@ router.post("/activate", requireAuth, async (req: AuthenticatedRequest, res: Res
       });
     }
 
-    // 3. Invoke secure RPC using high-privilege service_role client
+    // 4. Invoke secure RPC using high-privilege service_role client with overrides
     const { data, error } = await supabase.rpc("activate_recruitment_candidate", {
       p_queue_id: queueId,
-      p_reviewer_note: reviewerNoteSanitized
+      p_reviewer_note: reviewerNoteSanitized,
+      p_overrides: overrides
     });
 
     if (error) {

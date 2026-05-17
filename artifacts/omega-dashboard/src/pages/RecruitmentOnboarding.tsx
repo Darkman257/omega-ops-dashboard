@@ -17,6 +17,12 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription
 } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
+import {
+  PROJECT_CODES,
+  JOB_ROLE_CODES,
+  normalizeProjectCode,
+  normalizeJobRoleCode
+} from '@/lib/codeEngine';
 
 export default function RecruitmentOnboarding() {
   const { onboardingQueue, loading, refresh } = useAppContext();
@@ -27,6 +33,33 @@ export default function RecruitmentOnboarding() {
   // Local states for activation reviewer inputs and loaders
   const [reviewerNote, setReviewerNote] = useState('');
   const [isActivating, setIsActivating] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [selectedJob, setSelectedJob] = useState<string>('');
+
+  React.useEffect(() => {
+    if (selectedEntry) {
+      const payload = selectedEntry.mappedPayload || {};
+
+      const preProject = normalizeProjectCode(
+        payload.project_code ||
+        payload.project ||
+        payload.current_site ||
+        payload.site ||
+        payload.assigned_project
+      );
+      setSelectedProject(preProject || '');
+
+      const preJob = normalizeJobRoleCode(
+        payload.job_code ||
+        payload.job_title ||
+        payload.position
+      );
+      setSelectedJob(preJob || '');
+    } else {
+      setSelectedProject('');
+      setSelectedJob('');
+    }
+  }, [selectedEntry]);
 
   const filteredQueue = onboardingQueue.filter(entry => {
     const payload = entry.mappedPayload;
@@ -71,7 +104,8 @@ export default function RecruitmentOnboarding() {
   const isActivationEnabled = !!(
     payload.full_name?.trim() &&
     payload.phone?.trim() &&
-    (payload.job_title?.trim() || payload.position?.trim()) &&
+    selectedProject &&
+    selectedJob &&
     selectedEntry?.onboardingStatus === 'pending_omega_review'
   );
 
@@ -100,7 +134,9 @@ export default function RecruitmentOnboarding() {
         },
         body: JSON.stringify({
           queueId: selectedEntry.id,
-          reviewerNote: reviewerNote.trim() || null
+          reviewerNote: reviewerNote.trim() || null,
+          projectCode: selectedProject,
+          jobCode: selectedJob
         })
       });
 
@@ -123,6 +159,8 @@ export default function RecruitmentOnboarding() {
         });
         setSelectedEntry(null);
         setReviewerNote('');
+        setSelectedProject('');
+        setSelectedJob('');
         await refresh();
       } else {
         toast({
@@ -388,6 +426,58 @@ export default function RecruitmentOnboarding() {
                       </div>
                     )}
                   </div>
+
+                  {/* Standardized Project and Job Role Selectors */}
+                  {selectedEntry.onboardingStatus === 'pending_omega_review' && (
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-4">
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
+                        <Briefcase size={12} />
+                        NEXUS Operational Assignment
+                      </h4>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-wide text-muted-foreground font-black">Assigned Project</label>
+                        <select
+                          value={selectedProject}
+                          onChange={(e) => setSelectedProject(e.target.value)}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-lg h-10 px-3 text-xs text-foreground focus:border-cyan-500/50 focus:outline-none cursor-pointer"
+                          disabled={isActivating}
+                        >
+                          <option value="" className="bg-zinc-950 text-muted-foreground">-- Select Assigned Project --</option>
+                          {Object.entries(PROJECT_CODES).map(([code, details]) => (
+                            <option key={code} value={code} className="bg-zinc-950 text-foreground">
+                              {code} - {details.nameEn} ({details.nameAr})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-wide text-muted-foreground font-black">Standardized Job Role</label>
+                        <select
+                          value={selectedJob}
+                          onChange={(e) => setSelectedJob(e.target.value)}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-lg h-10 px-3 text-xs text-foreground focus:border-cyan-500/50 focus:outline-none cursor-pointer"
+                          disabled={isActivating}
+                        >
+                          <option value="" className="bg-zinc-950 text-muted-foreground">-- Select Standardized Job Role --</option>
+                          {Object.entries(JOB_ROLE_CODES).map(([code, details]) => (
+                            <option key={code} value={code} className="bg-zinc-950 text-foreground">
+                              {code} - {details.en} ({details.ar})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Code Prefix Preview */}
+                      <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3 flex justify-between items-center">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Code Preview:</span>
+                        <span className="font-mono text-xs text-cyan-400 font-bold tracking-wider">
+                          {selectedProject && selectedJob ? `${selectedProject}-${selectedJob}-###` : 'CHOOSE PROJECT & JOB'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Reviewer Note Input */}
                   {selectedEntry.onboardingStatus === 'pending_omega_review' && (
