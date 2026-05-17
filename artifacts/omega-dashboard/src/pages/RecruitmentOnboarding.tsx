@@ -1,27 +1,32 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ClipboardList, Search, User, Phone, Mail, 
+import {
+  ClipboardList, Search, User, Phone, Mail,
   ExternalLink, Copy, Calendar, MessageSquare,
   Clock, MapPin, Briefcase, Info, ChevronRight,
   ArrowRight, CheckCircle2, AlertCircle, X, ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import { useAppContext, OnboardingQueueEntry } from '@/context/AppContext';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription 
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription
 } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 
 export default function RecruitmentOnboarding() {
-  const { onboardingQueue, loading } = useAppContext();
+  const { onboardingQueue, loading, refresh } = useAppContext();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<OnboardingQueueEntry | null>(null);
+
+  // Local states for activation reviewer inputs and loaders
+  const [reviewerNote, setReviewerNote] = useState('');
+  const [isActivating, setIsActivating] = useState(false);
 
   const filteredQueue = onboardingQueue.filter(entry => {
     const payload = entry.mappedPayload;
@@ -62,6 +67,60 @@ export default function RecruitmentOnboarding() {
     window.open(`https://wa.me/${cleanPhone}`, '_blank');
   };
 
+  const payload: any = selectedEntry?.mappedPayload || {};
+  const isActivationEnabled = !!(
+    payload.full_name?.trim() &&
+    payload.phone?.trim() &&
+    (payload.job_title?.trim() || payload.position?.trim()) &&
+    selectedEntry?.onboardingStatus === 'pending_omega_review'
+  );
+
+  const handleActivate = async () => {
+    if (!selectedEntry || !isActivationEnabled) return;
+    setIsActivating(true);
+    try {
+      const { data, error } = await supabase.rpc('activate_recruitment_candidate', {
+        p_queue_id: selectedEntry.id,
+        p_reviewer_note: reviewerNote.trim() || null
+      });
+
+      if (error) {
+        toast({
+          title: 'Activation Failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const res = data as any;
+      if (res && res.success) {
+        toast({
+          title: 'Staff Record Generated',
+          description: `Successfully activated ${selectedEntry.mappedPayload.full_name} with sequential ID ${res.internal_code}.`,
+          variant: 'default',
+        });
+        setSelectedEntry(null);
+        setReviewerNote('');
+        await refresh();
+      } else {
+        toast({
+          title: 'Validation Error',
+          description: res?.error_reason || 'Unknown error occurred.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Communication Error',
+        description: err.message || 'Failed to trigger activation engine.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -94,8 +153,8 @@ export default function RecruitmentOnboarding() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search queue..." 
+            <Input
+              placeholder="Search queue..."
               className="pl-9 h-10 bg-white/5 border-white/10"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -132,7 +191,7 @@ export default function RecruitmentOnboarding() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: idx * 0.05 }}
               >
-                <Card 
+                <Card
                   className="bg-white/5 border-white/10 hover:border-primary/30 transition-all group cursor-pointer overflow-hidden relative"
                   onClick={() => setSelectedEntry(entry)}
                 >
@@ -186,7 +245,16 @@ export default function RecruitmentOnboarding() {
       )}
 
       {/* Details Sheet */}
-      <Sheet open={!!selectedEntry} onOpenChange={(open) => !open && setSelectedEntry(null)}>
+      <Sheet
+        open={!!selectedEntry}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedEntry(null);
+            setReviewerNote('');
+            setIsActivating(false);
+          }
+        }}
+      >
         <SheetContent className="sm:max-w-md bg-zinc-950 border-white/10 p-0 text-foreground overflow-hidden flex flex-col">
           {selectedEntry && (
             <>
@@ -197,9 +265,9 @@ export default function RecruitmentOnboarding() {
                   </div>
                 </div>
                 <div className="absolute top-4 right-4">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="h-8 w-8 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white"
                     onClick={() => setSelectedEntry(null)}
                   >
@@ -226,8 +294,8 @@ export default function RecruitmentOnboarding() {
                 <div className="space-y-6">
                   {/* Contact Group */}
                   <div className="grid grid-cols-2 gap-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="bg-white/5 border-white/10 h-12 justify-start gap-3 hover:bg-primary/10 hover:text-primary transition-all"
                       onClick={() => openWhatsApp(selectedEntry.mappedPayload.phone)}
                     >
@@ -237,8 +305,8 @@ export default function RecruitmentOnboarding() {
                         <div className="text-xs font-bold">Open Chat</div>
                       </div>
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="bg-white/5 border-white/10 h-12 justify-start gap-3 hover:bg-primary/10 hover:text-primary transition-all"
                       onClick={() => copyToClipboard(selectedEntry.mappedPayload.phone, 'Phone')}
                     >
@@ -265,8 +333,8 @@ export default function RecruitmentOnboarding() {
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-muted-foreground">Queued At</span>
                           <span className="text-xs font-medium text-foreground">
-                            {selectedEntry.mappedPayload.queued_at 
-                              ? new Date(selectedEntry.mappedPayload.queued_at).toLocaleString() 
+                            {selectedEntry.mappedPayload.queued_at
+                              ? new Date(selectedEntry.mappedPayload.queued_at).toLocaleString()
                               : new Date(selectedEntry.createdAt).toLocaleString()
                             }
                           </span>
@@ -300,6 +368,23 @@ export default function RecruitmentOnboarding() {
                     )}
                   </div>
 
+                  {/* Reviewer Note Input */}
+                  {selectedEntry.onboardingStatus === 'pending_omega_review' && (
+                    <div className="space-y-2 pt-2">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 px-0.5">
+                        <MessageSquare size={12} className="text-primary" />
+                        Activation Reviewer Note
+                      </label>
+                      <Input
+                        placeholder="Add activation notes (e.g. National ID verified...)"
+                        value={reviewerNote}
+                        onChange={(e) => setReviewerNote(e.target.value)}
+                        className="bg-white/5 border-white/10 text-xs h-10 focus:border-cyan-500/50"
+                        disabled={isActivating}
+                      />
+                    </div>
+                  )}
+
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex gap-4 items-start">
                     <div className="p-2 bg-primary/10 rounded-lg text-primary mt-0.5">
                       <Clock size={20} />
@@ -314,17 +399,39 @@ export default function RecruitmentOnboarding() {
                 </div>
               </div>
 
-              <div className="p-6 border-t border-white/10 bg-zinc-950 flex-shrink-0">
-                <Button className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-muted-foreground cursor-not-allowed group h-12" disabled>
-                  <span>Awaiting Activation Engine</span>
-                  <ArrowRight size={16} className="ml-2 opacity-30 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                <div className="mt-3 flex items-start gap-2 px-2">
-                  <ShieldAlert size={12} className="text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-[9px] font-bold text-amber-500/80 uppercase leading-tight tracking-wide">
-                    Activation Blocked: Phase 1 Compliance requires manual staff record entry. Automatic conversion is disabled for legal verification.
-                  </p>
-                </div>
+              {/* Action Footer */}
+              <div className="p-6 border-t border-white/10 bg-zinc-950 flex-shrink-0 space-y-4">
+                {selectedEntry.onboardingStatus === 'pending_omega_review' ? (
+                  <>
+                    <Button
+                      className="w-full h-12 bg-white/5 border border-amber-500/20 hover:border-amber-500/40 text-amber-500 cursor-not-allowed flex items-center justify-center gap-2 group px-4 text-center"
+                      disabled
+                    >
+                      <ShieldAlert size={16} className="text-amber-500 animate-pulse shrink-0" />
+                      <span className="text-[10px] font-black uppercase tracking-wide text-center leading-tight">
+                        Activation engine is installed but requires server-side approval endpoint.
+                      </span>
+                    </Button>
+                    <div className="flex items-start gap-2 px-2">
+                      <ShieldAlert size={12} className="text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-[9px] font-bold text-amber-500/80 uppercase leading-tight tracking-wide">
+                        Security Gate Active: Database RPC has been restricted to service_role proxies. Direct client browser promotion calls are blocked.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Button className="w-full bg-white/5 border border-white/10 text-muted-foreground cursor-not-allowed h-12" disabled>
+                      <span>Already Processed</span>
+                    </Button>
+                    <div className="flex items-start gap-2 px-2">
+                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                      <p className="text-[9px] font-bold text-emerald-400/80 uppercase leading-tight tracking-wide">
+                        Onboarding complete: This candidate has been approved and activated into the standard Staff Directory.
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           )}
