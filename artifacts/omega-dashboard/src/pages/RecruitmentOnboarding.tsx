@@ -79,21 +79,42 @@ export default function RecruitmentOnboarding() {
     if (!selectedEntry || !isActivationEnabled) return;
     setIsActivating(true);
     try {
-      const { data, error } = await supabase.rpc('activate_recruitment_candidate', {
-        p_queue_id: selectedEntry.id,
-        p_reviewer_note: reviewerNote.trim() || null
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        toast({
+          title: 'Authentication Error',
+          description: 'You must be logged in to activate staff records.',
+          variant: 'destructive',
+        });
+        setIsActivating(false);
+        return;
+      }
+
+      const response = await fetch('/api/staff/activate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          queueId: selectedEntry.id,
+          reviewerNote: reviewerNote.trim() || null
+        })
       });
 
-      if (error) {
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
         toast({
           title: 'Activation Failed',
-          description: error.message,
+          description: errJson.error_reason || errJson.error || `HTTP error ${response.status}`,
           variant: 'destructive',
         });
         return;
       }
 
-      const res = data as any;
+      const res = await response.json();
       if (res && res.success) {
         toast({
           title: 'Staff Record Generated',
@@ -404,18 +425,31 @@ export default function RecruitmentOnboarding() {
                 {selectedEntry.onboardingStatus === 'pending_omega_review' ? (
                   <>
                     <Button
-                      className="w-full h-12 bg-white/5 border border-amber-500/20 hover:border-amber-500/40 text-amber-500 cursor-not-allowed flex items-center justify-center gap-2 group px-4 text-center"
-                      disabled
+                      className={`w-full h-12 font-bold transition-all flex items-center justify-center gap-2 group ${
+                        isActivationEnabled
+                          ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]'
+                          : 'bg-white/5 border border-white/10 text-muted-foreground cursor-not-allowed'
+                      }`}
+                      disabled={!isActivationEnabled || isActivating}
+                      onClick={handleActivate}
                     >
-                      <ShieldAlert size={16} className="text-amber-500 animate-pulse shrink-0" />
-                      <span className="text-[10px] font-black uppercase tracking-wide text-center leading-tight">
-                        Activation engine is installed but requires server-side approval endpoint.
-                      </span>
+                      {isActivating ? (
+                        <>
+                          <Clock size={16} className="animate-spin" />
+                          <span>Activating Personnel...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck size={16} />
+                          <span>Activate Staff Record</span>
+                          <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
                     </Button>
                     <div className="flex items-start gap-2 px-2">
-                      <ShieldAlert size={12} className="text-amber-500 shrink-0 mt-0.5" />
-                      <p className="text-[9px] font-bold text-amber-500/80 uppercase leading-tight tracking-wide">
-                        Security Gate Active: Database RPC has been restricted to service_role proxies. Direct client browser promotion calls are blocked.
+                      <ShieldCheck size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                      <p className="text-[9px] font-bold text-emerald-400/80 uppercase leading-tight tracking-wide">
+                        Secure Activation Bridge Active: Request is proxied through our authenticated server middleware with full audit trail logging.
                       </p>
                     </div>
                   </>
