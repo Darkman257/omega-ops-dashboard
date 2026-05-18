@@ -464,6 +464,59 @@ export default function EmployeeDetail() {
                 </CardContent>
               </Card>
 
+              {/* Policy & Governance Layer */}
+              <Card className="bg-white/5 border-white/10 border-l-4 border-l-cyan-500/60 mb-4">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs font-bold flex items-center gap-2 text-cyan-400">
+                      <ShieldCheck size={14} />
+                      Company Policies Governance / حوكمة سياسات العمل
+                    </CardTitle>
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[9px] uppercase tracking-widest">
+                      Advisory / Pending Live Verification
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-[11px] text-zinc-400 leading-relaxed" dir="rtl">
+                    بموجب محرك حوكمة السياسات الرقمية (NEXUS Runtime Policy Engine)، يخضع الموظف لضوابط الامتثال والتحقق التالية:
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2 text-xs animate-fade-in" dir="rtl">
+                    <div className="p-3 rounded-lg bg-zinc-950/40 border border-zinc-850/80 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-white block">إقرار لائحة تنظيم العمل</span>
+                        <span className="text-[10px] text-zinc-500 block mt-0.5">توقيع رقمي للمواد 1-31 (المادة 1)</span>
+                      </div>
+                      <Badge className="bg-white/5 text-muted-foreground border-white/10 text-[9px]">Pending verification</Badge>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-zinc-950/40 border border-zinc-850/80 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-white block">بطاقة الشخصية المهنية (الكارنيه)</span>
+                        <span className="text-[10px] text-zinc-500 block mt-0.5">تصريح بوابات الدخول (المادة 7)</span>
+                      </div>
+                      <Badge className="bg-white/5 text-muted-foreground border-white/10 text-[9px]">Requires policy data source</Badge>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-zinc-950/40 border border-zinc-850/80 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-white block">مستندات التوظيف (المادة 2)</span>
+                        <span className="text-[10px] text-zinc-500 block mt-0.5">الفيش، المؤهل، الخدمة العسكرية</span>
+                      </div>
+                      <Badge className="bg-white/5 text-muted-foreground border-white/10 text-[9px]">Not connected to live engine</Badge>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-zinc-950/40 border border-zinc-850/80 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-white block">حماية أسرار العمل (المادة 26)</span>
+                        <span className="text-[10px] text-zinc-500 block mt-0.5">قيود حوكمة الـ AI والبيانات</span>
+                      </div>
+                      <Badge className="bg-white/5 text-muted-foreground border-white/10 text-[9px]">Informational only</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {complianceAlerts.length > 0 && (
                 <Card className="bg-white/5 border border-white/10 border-l-4 border-l-amber-500/60">
                   <CardHeader className="pb-2"><CardTitle className="text-xs font-bold flex items-center gap-2 text-amber-400"><AlertTriangle size={14} /> Active Compliance Vectors</CardTitle></CardHeader>
