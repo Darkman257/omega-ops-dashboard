@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Users, FileText,
   Upload, Settings, ChevronLeft, ChevronRight,
   Banknote, Car, Building2, Package, CheckSquare,
-  ClipboardList
+  ClipboardList, Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -55,6 +55,13 @@ const NAV_GROUPS = [
       { name: 'Fleet',      path: '/fleet',      icon: Car },
       { name: 'Facilities', path: '/facilities', icon: Building2 },
       { name: 'Assets',     path: '/assets',     icon: Package },
+    ],
+  },
+  {
+    label: 'Governance & Control',
+    items: [
+      { name: 'Company Policies', path: '/company-policies', icon: Shield },
+      { name: 'Runtime Timeline', path: '/runtime-timeline', icon: Shield },
     ],
   },
   {
