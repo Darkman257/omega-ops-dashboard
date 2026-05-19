@@ -906,22 +906,63 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addHousingAssignment = async (unitId: string, employeeName: string, employeeCode?: string) => {
-    const { error } = await supabase.from('housing_assignments').insert([{
+    // 1. Insert assignment
+    const { error: assignError } = await supabase.from('housing_assignments').insert([{
       housing_unit_id: unitId,
       employee_name: employeeName,
       employee_code: employeeCode,
       assignment_status: 'linked'
     }]);
-    if (!error) refresh(); // Refresh to get updated residents
+
+    if (assignError) {
+      console.error('addHousingAssignment error:', assignError);
+      return;
+    }
+
+    // 2. Synchronize staff table (guarded by unique identifier only)
+    if (employeeCode) {
+      const { error: staffError } = await supabase
+        .from('staff')
+        .update({ housing_unit_id: unitId })
+        .eq('internal_code', employeeCode);
+      if (staffError) {
+        console.error('addHousingAssignment staff sync error:', staffError);
+      }
+    } else {
+      console.warn('addHousingAssignment: Skipping staff.housing_unit_id update. No unique employeeCode provided.');
+    }
+
+    // 3. Refresh context
+    refresh();
   };
 
   const deleteHousingAssignment = async (unitId: string, employeeCode?: string, employeeName?: string) => {
-    let q = supabase.from('housing_assignments').delete().eq('housing_unit_id', unitId);
-    if (employeeCode) q = q.eq('employee_code', employeeCode);
-    else if (employeeName) q = q.eq('employee_name', employeeName);
+    // 1. Delete assignment
+    let q1 = supabase.from('housing_assignments').delete().eq('housing_unit_id', unitId);
+    if (employeeCode) q1 = q1.eq('employee_code', employeeCode);
+    else if (employeeName) q1 = q1.eq('employee_name', employeeName);
     
-    const { error } = await q;
-    if (!error) refresh(); // Refresh to get updated residents
+    const { error: deleteError } = await q1;
+    if (deleteError) {
+      console.error('deleteHousingAssignment error:', deleteError);
+      return;
+    }
+
+    // 2. Synchronize staff table (clear reference - guarded by unique identifier only)
+    if (employeeCode) {
+      const { error: staffError } = await supabase
+        .from('staff')
+        .update({ housing_unit_id: null })
+        .eq('internal_code', employeeCode);
+      if (staffError) {
+        console.error('deleteHousingAssignment staff sync error:', staffError);
+      }
+    } else {
+      console.warn('deleteHousingAssignment: Skipping staff.housing_unit_id clear. No unique employeeCode provided.');
+    }
+
+    // 3. Refresh context
+    refresh();
   };
 
   // ─── Liquidity ────────────────────────────────────────────────────────────
