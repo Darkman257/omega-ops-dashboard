@@ -62,6 +62,7 @@ const NAV_GROUPS = [
     items: [
       { name: 'Company Policies', path: '/company-policies', icon: Shield },
       { name: 'Runtime Timeline', path: '/runtime-timeline', icon: Shield },
+      { name: 'Security', path: '/security', icon: Shield },
     ],
   },
   {

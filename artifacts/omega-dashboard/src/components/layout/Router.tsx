@@ -19,6 +19,7 @@ import SiteAdminTasks from "@/pages/SiteAdminTasks";
 import RecruitmentOnboarding from "@/pages/RecruitmentOnboarding";
 import CompanyPolicies from "@/pages/CompanyPolicies";
 import RuntimeTimeline from "@/pages/RuntimeTimeline";
+import Security from "@/pages/Security";
 import NotFound from "@/pages/not-found";
 
 export function Router() {
@@ -40,6 +41,7 @@ export function Router() {
         <Route path="/documents" component={Documents} />
         <Route path="/company-policies" component={CompanyPolicies} />
         <Route path="/runtime-timeline" component={RuntimeTimeline} />
+        <Route path="/security" component={Security} />
         <Route path="/import" component={Import} />
         <Route path="/settings" component={Settings} />
         <Route path="/profile" component={Profile} />
