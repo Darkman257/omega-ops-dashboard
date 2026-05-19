@@ -370,44 +370,98 @@ export default function EmployeeDetail() {
           >
             {/* Overview Panel */}
             <TabsContent value="overview" forceMount className={activeTab !== 'overview' ? 'hidden' : 'grid gap-4 md:grid-cols-2'}>
-              <Card className="bg-white/5 border-white/10 h-fit">
-                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold flex items-center gap-2"><User size={14} className="text-cyan-400" /> Personal Identity</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between text-xs py-2 border-b border-white/5"><span className="text-muted-foreground">Full Name</span><span className="font-bold text-right" dir="rtl">{emp.name}</span></div>
-                  <div className="flex justify-between text-xs py-2 border-b border-white/5"><span className="text-muted-foreground">Internal System Code</span><span className="font-mono text-cyan-400">{emp.internalCode || '—'}</span></div>
-                  <div className="flex justify-between text-xs py-2 border-b border-white/5"><span className="text-muted-foreground">Assigned Department</span><span>{emp.department}</span></div>
-                  <div className="flex justify-between text-xs py-2"><span className="text-muted-foreground">Role Status</span><span>{emp.role}</span></div>
+              {/* 1. Operational Snapshot */}
+              <Card className="bg-white/5 border-white/10 h-fit md:col-span-2">
+                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold flex items-center gap-2"><Briefcase size={14} className="text-cyan-400" /> Operational Snapshot</CardTitle></CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Internal Code</span>
+                    <span className="font-mono text-cyan-400 text-sm font-bold">{emp.internalCode || 'Not recorded'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Current Site / Project</span>
+                    <span className="text-foreground text-sm font-bold">{emp.currentSite || 'Not recorded'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Department</span>
+                    <span className="text-foreground text-sm font-bold">{emp.department || 'Not recorded'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Job Role</span>
+                    <span className="text-foreground text-sm font-bold">{emp.role || 'Not recorded'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Lifecycle Status</span>
+                    <Badge variant="outline" className="w-fit bg-white/5 text-foreground border-white/10 uppercase tracking-widest text-[9px]">{emp.lifecycleStatus || 'Not recorded'}</Badge>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Clearance Status</span>
+                    <Badge variant="outline" className="w-fit bg-white/5 text-foreground border-white/10 uppercase tracking-widest text-[9px]">{emp.clearanceStatus || 'Not recorded'}</Badge>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Housing Status</span>
+                    <span className="text-foreground text-sm font-bold flex items-center gap-1.5">
+                      <Home size={12} className="text-muted-foreground" /> {linkedHousing ? `Unit ${linkedHousing.unitNumber}` : 'Not linked'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Fleet Status</span>
+                    <span className="text-foreground text-sm font-bold flex items-center gap-1.5">
+                      <Truck size={12} className="text-muted-foreground" /> {linkedVehicle ? linkedVehicle.carName : 'Not linked'}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
 
+              {/* 2. Employment Lifecycle */}
+              <Card className="bg-white/5 border-white/10 h-fit">
+                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold flex items-center gap-2"><Calendar size={14} className="text-cyan-400" /> Employment Lifecycle</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between text-xs py-2 border-b border-white/5">
+                    <span className="text-muted-foreground">Hire Date</span>
+                    <span className="font-mono text-cyan-400">{emp.hireDate ? formatDate(emp.hireDate) : 'Not recorded'}</span>
+                  </div>
+                  {emp.exitDate && (
+                    <div className="flex justify-between text-xs py-2 border-b border-white/5">
+                      <span className="text-muted-foreground">Exit Date</span>
+                      <span className="font-mono text-amber-400">{formatDate(emp.exitDate)}</span>
+                    </div>
+                  )}
+                  {emp.exitReason && (
+                    <div className="flex justify-between text-xs py-2 border-b border-white/5">
+                      <span className="text-muted-foreground">Exit Reason</span>
+                      <span className="text-foreground">{emp.exitReason}</span>
+                    </div>
+                  )}
+                  {emp.onboardingNotes && (
+                    <div className="space-y-1 py-2 border-b border-white/5">
+                      <span className="text-xs text-muted-foreground block">Onboarding Notes</span>
+                      <p className="text-[11px] text-foreground leading-relaxed bg-white/5 p-2 rounded-lg">{emp.onboardingNotes}</p>
+                    </div>
+                  )}
+                  {emp.offboardingNotes && (
+                    <div className="space-y-1 py-2 border-b border-white/5">
+                      <span className="text-xs text-muted-foreground block">Offboarding Notes</span>
+                      <p className="text-[11px] text-foreground leading-relaxed bg-white/5 p-2 rounded-lg">{emp.offboardingNotes}</p>
+                    </div>
+                  )}
+                  {(!emp.exitDate && !emp.exitReason && !emp.offboardingNotes) && (
+                    <div className="py-3 text-center">
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">No offboarding record</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Telemetry & Contact */}
               <Card className="bg-white/5 border-white/10 h-fit">
                 <CardHeader className="pb-3"><CardTitle className="text-sm font-bold flex items-center gap-2"><Phone size={14} className="text-cyan-400" /> Telemetry & Contact</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex justify-between text-xs py-2 border-b border-white/5"><span className="text-muted-foreground">Phone Channel</span><span className="font-mono text-cyan-400">{emp.phone || '—'}</span></div>
-                  <div className="flex justify-between text-xs py-2 border-b border-white/5"><span className="text-muted-foreground">Email Address</span><span className="text-right text-muted-foreground">{emp.email || '—'}</span></div>
-                  <div className="flex justify-between text-xs py-2"><span className="text-muted-foreground">Preferred Messenger</span><span className="text-emerald-400">WhatsApp Active</span></div>
+                  <div className="flex justify-between text-xs py-2 border-b border-white/5"><span className="text-muted-foreground">Phone Channel</span><span className="font-mono text-cyan-400">{emp.phone || 'Not recorded'}</span></div>
+                  <div className="flex justify-between text-xs py-2 border-b border-white/5"><span className="text-muted-foreground">Email Address</span><span className="text-right text-muted-foreground">{emp.email || 'Not recorded'}</span></div>
+                  <div className="flex justify-between text-xs py-2"><span className="text-muted-foreground">Preferred Messenger</span><span className="text-emerald-400">{emp.phone ? 'WhatsApp Active' : 'Not linked'}</span></div>
                 </CardContent>
               </Card>
-
-              {(linkedHousing || linkedVehicle) && (
-                <Card className="bg-white/5 border-white/10 md:col-span-2">
-                  <CardHeader className="pb-3"><CardTitle className="text-sm font-bold flex items-center gap-2"><Key size={14} className="text-cyan-400" /> Linked Operational Assets</CardTitle></CardHeader>
-                  <CardContent className="grid gap-4 sm:grid-cols-2">
-                    {linkedHousing && (
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                        <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300"><Home size={16} /></div>
-                        <div><p className="text-xs font-bold">Unit {linkedHousing.unitNumber}</p><p className="text-[10px] text-muted-foreground">{linkedHousing.location}</p></div>
-                      </div>
-                    )}
-                    {linkedVehicle && (
-                      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                        <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300"><Truck size={16} /></div>
-                        <div><p className="text-xs font-bold">{linkedVehicle.carName}</p><p className="text-[10px] text-muted-foreground">Plate: {linkedVehicle.plateNumber} • Status: {linkedVehicle.status}</p></div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
             </TabsContent>
 
             {/* Timeline Panel */}
