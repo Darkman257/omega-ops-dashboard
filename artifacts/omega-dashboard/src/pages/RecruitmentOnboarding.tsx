@@ -38,7 +38,7 @@ export default function RecruitmentOnboarding() {
 
   React.useEffect(() => {
     if (selectedEntry) {
-      const payload = selectedEntry.mappedPayload || {};
+      const payload: any = selectedEntry.mappedPayload || {};
 
       const preProject = normalizeProjectCode(
         payload.project_code ||
@@ -426,6 +426,48 @@ export default function RecruitmentOnboarding() {
                       </div>
                     )}
                   </div>
+
+                  {/* Advisory Policy Check - Article 2 */}
+                  {selectedEntry.onboardingStatus === 'pending_omega_review' && (
+                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 space-y-3">
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-400 flex items-center justify-between gap-1.5">
+                        <span className="flex items-center gap-1.5"><ShieldAlert size={12} className="text-amber-500" /> Compliance Guard: Article 2 Checklist</span>
+                        <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded text-[8px]">Advisory Only</span>
+                      </h4>
+                      <p className="text-[10px] text-zinc-400 leading-relaxed" dir="rtl">
+                        بموجب <strong>المادة 2</strong> من لائحة تنظيم العمل لشركة أوميجا، يُرجى التأكد من استلام الأوراق الثمانية الرسمية للمراجعة الحية (Pending live document verification):
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-[10px]" dir="rtl">
+                        <label className="flex items-center gap-1.5 text-zinc-300">
+                          <input type="checkbox" className="rounded border-zinc-800 bg-zinc-900 text-amber-500 accent-amber-500" />
+                          <span>بطاقة الرقم القومي</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 text-zinc-300">
+                          <input type="checkbox" className="rounded border-zinc-800 bg-zinc-900 text-amber-500 accent-amber-500" />
+                          <span>المؤهل الدراسي</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 text-zinc-300">
+                          <input type="checkbox" className="rounded border-zinc-800 bg-zinc-900 text-amber-500 accent-amber-500" />
+                          <span>الفيش والتشبيه</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 text-zinc-300">
+                          <input type="checkbox" className="rounded border-zinc-800 bg-zinc-900 text-amber-500 accent-amber-500" />
+                          <span>موقف الخدمة العسكرية</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 text-zinc-300">
+                          <input type="checkbox" className="rounded border-zinc-800 bg-zinc-900 text-amber-500 accent-amber-500" />
+                          <span>كعب العمل</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 text-zinc-300">
+                          <input type="checkbox" className="rounded border-zinc-800 bg-zinc-900 text-amber-500 accent-amber-500" />
+                          <span>الرقم التأميني</span>
+                        </label>
+                      </div>
+                      <div className="text-[9px] text-amber-500/70 border-t border-amber-500/10 pt-2 font-mono" dir="rtl">
+                        حالة الحوكمة: التزام استشاري (Advisory only) - لا يمنع التنشيط حالياً (Does not block activation currently).
+                      </div>
+                    </div>
+                  )}
 
                   {/* Standardized Project and Job Role Selectors */}
                   {selectedEntry.onboardingStatus === 'pending_omega_review' && (
