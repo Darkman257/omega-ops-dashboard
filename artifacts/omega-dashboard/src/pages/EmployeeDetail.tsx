@@ -227,11 +227,78 @@ export default function EmployeeDetail() {
     v.driver?.toLowerCase().includes(emp.name.toLowerCase())
   );
 
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) return parts[0][0] + parts[1][0];
-    return parts[0][0] || 'EE';
+  // ─── Name Display Helpers ─────────────────────────────────────────────────
+
+  /** Returns true when the string contains Arabic Unicode characters. */
+  const isArabicText = (value: string): boolean =>
+    /[\u0600-\u06FF]/.test(value);
+
+  /**
+   * Converts an Arabic full name into a phonetic English approximation
+   * using a character-level map covering common Egyptian Arabic letters.
+   * Used as a fallback when no English name field exists.
+   */
+  const transliterateArabicName = (arabic: string): string => {
+    const map: Record<string, string> = {
+      'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'a',
+      'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'g',
+      'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'z',
+      'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh',
+      'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z',
+      'ع': 'a', 'غ': 'gh', 'ف': 'f', 'ق': 'k',
+      'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+      'ه': 'h', 'و': 'w', 'ي': 'y', 'ى': 'a',
+      'ة': 'a', 'ء': '', 'ئ': 'y', 'ؤ': 'w',
+      'لا': 'la', 'اﻻ': 'al',
+    };
+    return arabic
+      .split(' ')
+      .map(word =>
+        word
+          .split('')
+          .map(ch => map[ch] ?? '')
+          .join('')
+      )
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ') || arabic;
   };
+
+  /**
+   * Priority order for the displayed employee name:
+   * 1. emp.englishName
+   * 2. emp.nameEn
+   * 3. emp.attendanceName
+   * 4. transliterated Arabic fallback
+   */
+  const getDisplayName = (employee: typeof emp): string => {
+    if (!employee) return 'Unknown';
+    const en =
+      (employee as any).englishName ||
+      (employee as any).nameEn ||
+      (employee as any).attendanceName;
+    if (en && typeof en === 'string' && en.trim() && !isArabicText(en)) {
+      return en.trim();
+    }
+    return transliterateArabicName(employee.name);
+  };
+
+  /**
+   * Extracts initials from an English name.
+   * Always returns exactly two uppercase Latin letters.
+   * Example: "Hossam Fathy Mahmoud" → "HM"
+   */
+  const getEnglishInitials = (englishName: string): string => {
+    const parts = englishName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return (parts[0]?.slice(0, 2) || 'OM').toUpperCase();
+  };
+
+  const displayName   = getDisplayName(emp);
+  const avatarInitials = getEnglishInitials(displayName);
+  const showArabicLine = isArabicText(emp.name);
 
   // Compliance Calculators
   const complianceAlerts = [];
@@ -293,15 +360,20 @@ export default function EmployeeDetail() {
           {/* Profile Metadata Anchor */}
           <div className="flex items-center gap-5 mb-6 flex-wrap sm:flex-nowrap">
             <div className="h-16 w-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shadow-lg backdrop-blur-md shrink-0">
-              <span className="text-cyan-400 font-black text-xl tracking-widest">{getInitials(emp.name)}</span>
+              <span className="text-cyan-400 font-black text-xl tracking-widest">{avatarInitials}</span>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-2xl font-black text-foreground tracking-tight leading-none" dir="rtl">{emp.name}</h1>
+                <h1 className="text-2xl font-black text-foreground tracking-tight leading-none">{displayName}</h1>
                 <Badge variant="outline" className="font-mono text-cyan-400 bg-cyan-500/5 border-cyan-500/20 text-xs h-5 px-2">
                   {emp.internalCode || '—'}
                 </Badge>
               </div>
+              {showArabicLine && (
+                <p className="text-xs text-muted-foreground/60 font-mono mt-0.5 leading-none" dir="rtl">
+                  {emp.name}
+                </p>
+              )}
               <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mt-2.5">
                 <span className="flex items-center gap-1.5"><Briefcase size={13} className="text-cyan-500/70" /> {emp.role}</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
