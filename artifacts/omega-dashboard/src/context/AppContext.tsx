@@ -57,7 +57,7 @@ export interface Employee {
   lifecycleStatus: 'active' | 'onboarding' | 'suspended' | 'offboarding' | 'inactive';
   clearanceStatus: 'not_required' | 'pending' | 'in_progress' | 'blocked' | 'cleared';
   housingUnitId?: string;
-  assignedVehicleId?: string;
+  assignedVehicleId?: string | null;
   onboardingNotes?: string;
   offboardingNotes?: string;
 }

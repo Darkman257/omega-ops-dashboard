@@ -222,7 +222,7 @@ function EditModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => void
 }
 
 function AssignDriverModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => void }) {
-  const { employees, updateVehicle } = useAppContext();
+  const { employees, updateVehicle, updateEmployee } = useAppContext();
   const [search, setSearch] = useState('');
   const [assigning, setAssigning] = useState(false);
 
@@ -249,6 +249,36 @@ function AssignDriverModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: ()
       assignmentStatus: 'linked',
       assignment_status: 'linked'
     } as any);
+
+    // Sync old driver: clear assigned_vehicle_id if replaced
+    const oldDriverCode = String(vehicle.driverCode || (vehicle as any).driver_code || '').trim();
+    if (oldDriverCode && oldDriverCode !== driverCode) {
+      const oldMatches = employees.filter(e => {
+        const c = String(e.internalCode || (e as any).employeeCode || (e as any).employee_code || (e as any).code || '').trim();
+        return c === oldDriverCode;
+      });
+      if (oldMatches.length === 1) {
+        updateEmployee(oldMatches[0].id, { assignedVehicleId: null });
+      }
+    }
+
+    // Sync new driver: update assigned_vehicle_id to vehicle.id
+    if (driverCode) {
+      const matches = employees.filter(e => {
+        const c = String(e.internalCode || (e as any).employeeCode || (e as any).employee_code || (e as any).code || '').trim();
+        return c === driverCode;
+      });
+
+      if (matches.length === 1) {
+        updateEmployee(matches[0].id, { assignedVehicleId: vehicle.id });
+      } else if (matches.length > 1) {
+        console.warn(`[AssignDriver] Skip staff update: internalCode "${driverCode}" is not unique (${matches.length} matches found)`);
+      } else {
+        console.warn(`[AssignDriver] Skip staff update: No employee found with internalCode "${driverCode}"`);
+      }
+    } else {
+      console.warn(`[AssignDriver] Skip staff update: No unique internalCode for employee "${driverName}"`);
+    }
 
     setAssigning(false);
     onClose();
@@ -379,7 +409,7 @@ function LiquidityBar() {
 }
 
 export default function Fleet() {
-  const { vehicles, deleteVehicle, updateVehicle, bulkDeleteVehicles, bulkUpdateVehicles } = useAppContext();
+  const { vehicles, employees, updateEmployee, deleteVehicle, updateVehicle, bulkDeleteVehicles, bulkUpdateVehicles } = useAppContext();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dataTab, setDataTab] = useState<'all' | 'valid' | 'bad'>('all');
@@ -389,7 +419,32 @@ export default function Fleet() {
   const [assignVehicle, setAssignVehicle] = useState<Vehicle | null>(null);
 
   const removeDriver = (id: string) => {
-    updateVehicle(id, { driver: '', driverCode: '', assignmentStatus: 'pending_review' });
+    const vehicle = vehicles.find(v => v.id === id);
+
+    updateVehicle(id, {
+      driver: '',
+      driverCode: '',
+      assignmentStatus: 'pending_review',
+      assignment_status: 'pending_review'
+    } as any);
+
+    if (vehicle) {
+      const driverCode = String(vehicle.driverCode || (vehicle as any).driver_code || '').trim();
+      if (driverCode) {
+        const matches = employees.filter(e => {
+          const c = String(e.internalCode || (e as any).employeeCode || (e as any).employee_code || (e as any).code || '').trim();
+          return c === driverCode;
+        });
+
+        if (matches.length === 1) {
+          updateEmployee(matches[0].id, { assignedVehicleId: null });
+        } else if (matches.length > 1) {
+          console.warn(`[RemoveDriver] Skip staff update: internalCode "${driverCode}" is not unique (${matches.length} matches found)`);
+        } else {
+          console.warn(`[RemoveDriver] Skip staff update: No employee found with internalCode "${driverCode}"`);
+        }
+      }
+    }
   };
 
   const toggleSelect = (id: string) => {
