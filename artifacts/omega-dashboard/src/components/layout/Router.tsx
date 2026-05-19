@@ -7,6 +7,7 @@ import ProjectDetail from "@/pages/ProjectDetail";
 import Staff from "@/pages/Staff";
 import EmployeeDetail from "@/pages/EmployeeDetail";
 import Payroll from "@/pages/Payroll";
+import Attendance from "@/pages/Attendance";
 import Fleet from "@/pages/Fleet";
 import Facilities from "@/pages/Facilities";
 import Assets from "@/pages/Assets";
@@ -32,6 +33,7 @@ export function Router() {
         <Route path="/staff" component={Staff} />
         <Route path="/staff/:id" component={EmployeeDetail} />
         <Route path="/payroll" component={Payroll} />
+        <Route path="/attendance" component={Attendance} />
         <Route path="/fleet" component={Fleet} />
         <Route path="/facilities" component={Facilities} />
         <Route path="/assets" component={Assets} />

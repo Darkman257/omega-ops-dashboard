@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Users, FileText,
   Upload, Settings, ChevronLeft, ChevronRight,
   Banknote, Car, Building2, Package, CheckSquare,
-  ClipboardList, Shield
+  ClipboardList, Shield, CalendarCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -38,6 +38,7 @@ const NAV_GROUPS = [
       { name: 'Dashboard',  path: '/',           icon: LayoutDashboard },
       { name: 'Projects',   path: '/projects',   icon: Briefcase },
       { name: 'Staff',      path: '/staff',      icon: Users },
+      { name: 'Attendance', path: '/attendance', icon: CalendarCheck },
       { name: 'Recruitment Onboarding', path: '/recruitment-onboarding', icon: ClipboardList },
       { name: 'Site Tasks', path: '/site-tasks', icon: CheckSquare },
     ],
